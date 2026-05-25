@@ -1,0 +1,2 @@
+# Elephant
+Elephant – a privacy-first, open-source messenger.
