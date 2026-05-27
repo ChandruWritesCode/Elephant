@@ -31,9 +31,5 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# Local environment overrides
-.env.local
-.env
-
 # Keep database data folders out of version control
 pgdata/
