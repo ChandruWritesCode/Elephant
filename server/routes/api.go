@@ -7,4 +7,8 @@ import (
 
 func ApiRoute(router chi.Router) {
 	router.Get("/health", controllers.HandleHealthCheck) // resolves to /api/health
+	
+	// sub-routes
+	router.Route("/auth", AuthRoute)
+	router.Route("/users", UserRoute)
 }
