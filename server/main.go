@@ -19,7 +19,7 @@ func main() {
 
 	// routes mapping using sub-groups
 	routes.ApiRoute(app.Group("/api"))
-	
+
 	// starting the server
 	config.Run()
 }

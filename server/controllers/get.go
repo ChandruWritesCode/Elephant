@@ -8,8 +8,6 @@ import (
 	"github.com/commandlinecoding/elephant/server/services"
 )
 
-
-
 func HandleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	report := services.PerformHealthCheck()
 	w.Header().Set("Content-Type", "application/json")
