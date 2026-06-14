@@ -1,3 +1,4 @@
+import 'package:elephant_frontend/pages/profile_setup_page.dart';
 import 'package:elephant_frontend/providers/timer_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -141,6 +142,12 @@ class NumberVerificationPage extends StatelessWidget {
                       onPressed: otp.isOtpComplete
                           ? () {
                               otp.updateOtp(otpController.text);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProfileSetupPage(),
+                                ),
+                              );
                             }
                           : null,
                       child: const Text('Verify'),
