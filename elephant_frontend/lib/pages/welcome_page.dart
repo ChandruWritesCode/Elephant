@@ -1,3 +1,4 @@
+import 'package:elephant_frontend/pages/phone_number_page.dart';
 import 'package:elephant_frontend/players/intro_animation.dart';
 import 'package:flutter/material.dart';
 
@@ -36,7 +37,9 @@ class WelcomePage extends StatelessWidget {
                     Size(double.infinity, 40),
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(builder: (context)=>PhoneNumberPage()));
+                },
                 child: Text('Get Started'),
               ),
             ),
