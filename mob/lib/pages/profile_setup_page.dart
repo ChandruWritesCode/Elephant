@@ -1,5 +1,5 @@
-import 'package:elephant_frontend/pages/home_page.dart';
-import 'package:elephant_frontend/providers/image_picker_provider.dart';
+import 'package:mob/pages/home_page.dart';
+import 'package:mob/providers/image_picker_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

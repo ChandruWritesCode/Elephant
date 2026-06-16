@@ -1,5 +1,5 @@
-import 'package:elephant_frontend/pages/phone_number_page.dart';
-import 'package:elephant_frontend/players/intro_animation.dart';
+import 'package:mob/pages/phone_number_page.dart';
+import 'package:mob/players/intro_animation.dart';
 import 'package:flutter/material.dart';
 
 class WelcomePage extends StatelessWidget {
