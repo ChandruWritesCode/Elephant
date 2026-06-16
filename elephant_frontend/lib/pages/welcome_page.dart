@@ -38,7 +38,11 @@ class WelcomePage extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(builder: (context)=>PhoneNumberPage()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => PhoneNumberPage(),
+                    ),
+                  );
                 },
                 child: Text('Get Started'),
               ),

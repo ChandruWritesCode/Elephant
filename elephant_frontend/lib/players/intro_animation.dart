@@ -18,6 +18,7 @@ class _IntroAnimationState extends State<IntroAnimation> {
     controller = VideoPlayerController.asset('assets/animations/intro.mp4')
       ..initialize().then((_) {
         setState(() {});
+        controller.setVolume(0);
         controller.play();
         controller.setLooping(true);
       });
@@ -26,6 +27,7 @@ class _IntroAnimationState extends State<IntroAnimation> {
   @override
   void dispose() {
     controller.dispose();
+    controller.pause();
     super.dispose();
   }
 

@@ -1,4 +1,5 @@
 import 'package:elephant_frontend/pages/profile_setup_page.dart';
+import 'package:elephant_frontend/providers/basic_providers.dart';
 import 'package:elephant_frontend/providers/timer_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -6,8 +7,9 @@ import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
 
 class PhoneNumberPage extends StatelessWidget {
-  const PhoneNumberPage({super.key});
+  PhoneNumberPage({super.key});
 
+  final TextEditingController numberController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,7 +28,22 @@ class PhoneNumberPage extends StatelessWidget {
               'Please confirm your country code and enter you phone number. We will send you a verification code via SMS.',
             ),
             SizedBox(height: 20),
-            IntlPhoneField(),
+            IntlPhoneField(
+              controller: numberController,
+              decoration: InputDecoration(border: OutlineInputBorder()),
+              onChanged: (value) {
+                context.read<BasicProviders>().updateConCode(value.countryCode);
+                context.read<BasicProviders>().updateNumber(value.number);
+                context.read<BasicProviders>().setNumberValid(
+                  value.isValidNumber(),
+                );
+              },
+              onCountryChanged: (value) {
+                context.read<BasicProviders>().updateConCode(
+                  '+${value.dialCode}',
+                );
+              },
+            ),
             Spacer(),
             Container(
               margin: .symmetric(horizontal: 20),
@@ -36,16 +53,21 @@ class PhoneNumberPage extends StatelessWidget {
                     Size(double.infinity, 40),
                   ),
                 ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ChangeNotifierProvider(
-                        create: (_) => OtpProvider()..startTimer(),
-                        child: NumberVerificationPage(),
-                      ),
-                    ),
-                  );
-                },
+                onPressed: context.watch<BasicProviders>().isNumberValid
+                    ? () {
+                        context.read<BasicProviders>().updateNumber(
+                          numberController.text,
+                        );
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => ChangeNotifierProvider(
+                              create: (_) => OtpProvider()..startTimer(),
+                              child: NumberVerificationPage(),
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
                 child: Text('Next'),
               ),
             ),
@@ -75,8 +97,8 @@ class NumberVerificationPage extends StatelessWidget {
                 style: TextStyle(fontWeight: .bold, fontSize: 25),
               ),
               const SizedBox(height: 10),
-              const Text(
-                "We've sent a 6-digit code to\n+XX XXXXXXXXXX",
+              Text(
+                "We've sent a 6-digit code to\n${context.read<BasicProviders>().getCompleteNumber}",
                 textAlign: .center,
               ),
               const SizedBox(height: 25),
