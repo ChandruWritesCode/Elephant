@@ -15,6 +15,7 @@ func main() {
 	app := config.App
 
 	// middlewares
+	app.Use(middlewares.CorsHandler)
 	app.Use(middlewares.SimpleLogger)
 
 	// routes mapping using sub-groups
