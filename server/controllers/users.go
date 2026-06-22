@@ -1,14 +1,8 @@
 package controllers
 
-import (
-	"encoding/json"
-	"net/http"
-
-	"github.com/commandlinecoding/elephant/server/models"
-)
+import "net/http"
 
 func HandleUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models.APIResponse{Success: true, Message: "coming soon..."})
+	_, _ = w.Write([]byte(`{"status": "users stub active"}`))
 }
-

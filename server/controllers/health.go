@@ -9,8 +9,21 @@ import (
 )
 
 func HandleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	report := services.PerformHealthCheck()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models.APIResponse{Success: true, Message: "Operational", Data: report})
-}
+	data := services.PerformHealthCheck()
+	
+	resp := models.JSONResponse{
+		Success: true,
+		Data:    data,
+	}
 
+	if data["postgres"] == "down" {
+		resp.Success = false
+		resp.Error = "Database engine unreachable"
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+	
+	_ = json.NewEncoder(w).Encode(resp)
+}
