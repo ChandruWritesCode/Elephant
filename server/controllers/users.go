@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/commandlinecoding/elephant/server/middlewares"
 	"github.com/commandlinecoding/elephant/server/models"
+	"github.com/commandlinecoding/elephant/server/repository"
 	"github.com/commandlinecoding/elephant/server/services"
 )
-
-func HandleUsers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"status": "users stub active"}`))
-}
 
 func HandleUserSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -41,4 +39,41 @@ func HandleUserSearch(w http.ResponseWriter, r *http.Request) {
 		Success: true,
 		Data:    users,
 	})
+}
+
+func HandleGetMe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	uid, ok := r.Context().Value(middlewares.UserIDKey).(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Unauthorized context"})
+		return
+	}
+
+	repo := repository.NewUserRepository()
+	user, err := repo.FindByID(r.Context(), uid)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "User profile not found"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: user})
+}
+
+func HandleGetUserByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	id := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+
+	repo := repository.NewUserRepository()
+	user, err := repo.FindByID(r.Context(), id)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Requested profile does not exist"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: user})
 }

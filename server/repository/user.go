@@ -103,3 +103,22 @@ func (r *UserRepository) SearchUsers(ctx context.Context, searchTerm string, lim
 
 	return users, nil
 }
+
+func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User, error) {
+	query := `
+		SELECT id, username, display_name, created_at 
+		FROM users 
+		WHERE id = $1;
+	`
+	var user models.User
+	err := config.DB.QueryRow(ctx, query, id).Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
