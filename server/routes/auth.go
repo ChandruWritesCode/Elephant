@@ -7,4 +7,5 @@ import (
 
 func AuthRoute(router chi.Router) {
 	router.Post("/register", controllers.HandleRegister)
+	router.Post("/login", controllers.HandleLogin)
 }

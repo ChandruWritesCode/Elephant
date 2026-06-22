@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/commandlinecoding/elephant/server/env"
@@ -41,4 +42,28 @@ func GenerateTokenPair(uid string) (*TokenPair, error) {
 		AccessToken:  atkStr,
 		RefreshToken: rtkStr,
 	}, nil
+}
+
+// VerifyAccessToken
+func VerifyAccessToken(tokenStr string) (string, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(env.JWT_SECRET), nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		uid, ok := claims["sub"].(string)
+		if !ok {
+			return "", fmt.Errorf("invalid token claim structure")
+		}
+		return uid, nil
+	}
+
+	return "", fmt.Errorf("invalid token status")
 }

@@ -57,3 +57,36 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
+
+
+type LoginReq struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func HandleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var req LoginReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Invalid json payload structure"})
+		return
+	}
+
+	svc := services.NewAuthService()
+	user, tokens, err := svc.Login(r.Context(), req.Username, req.Password)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"user":   user,
+			"tokens": tokens,
+		},
+	})
+}

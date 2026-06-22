@@ -49,3 +49,23 @@ func (r *UserRepository) UsernameExists(ctx context.Context, username string) (b
 
 	return exists, nil
 }
+
+func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*models.User, error) {
+	query := `
+		SELECT id, username, display_name, password_hash, created_at 
+		FROM users 
+		WHERE username = $1;
+	`
+	var user models.User
+	err := config.DB.QueryRow(ctx, query, username).Scan(
+		&user.ID,
+		&user.Username,
+		&user.DisplayName,
+		&user.PasswordHash,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
