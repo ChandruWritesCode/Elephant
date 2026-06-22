@@ -1,0 +1,46 @@
+name: Go Backend CI
+
+on:
+  push:
+    branches: [ main, v0.1.0 ]
+  pull_request:
+    branches: [ main, v0.1.0 ]
+
+jobs:
+  test:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: elephant_user
+          POSTGRES_PASSWORD: elephant_secure_user
+          POSTGRES_DB: elephant_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@v4
+
+      - name: Set up Go environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.3'
+
+      - name: Install dependencies
+        run: |
+          cd server
+          go mod download
+
+      - name: Run Unit & Integration Tests
+        run: |
+          cd server
+          go test -v ./...
