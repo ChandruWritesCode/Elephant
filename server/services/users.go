@@ -13,42 +13,36 @@ type UserService struct {
 	repo *repository.UserRepository
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
-	return &UserService{repo: repo}
+func NewUserService() *UserService {
+	return &UserService{repo: repository.NewUserRepository()}
 }
 
-type CreateUserRequest struct {
-	Username    string
-	DisplayName string
-	Password    string
-}
+func (s *UserService) Register(ctx context.Context, un, dn, passwd string) (*models.User, error) {
+	un = strings.ToLower(strings.TrimSpace(un))
+	dn = strings.TrimSpace(dn)
 
-func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*models.User, error) {
-	username := strings.ToLower(strings.TrimSpace(req.Username))
-	displayName := strings.TrimSpace(req.DisplayName)
-
-	if username == "" || displayName == "" || req.Password == "" {
-		return nil, errors.New("all registration fields are required")
+	if len(un) < 3 || len(un) > 30 {
+		return nil, errors.New("username must be between 3 and 30 characters")
+	}
+	if len(passwd) < 8 {
+		return nil, errors.New("password must be at least 8 characters long")
+	}
+	if dn == "" {
+		return nil, errors.New("display name cannot be empty")
 	}
 
-	if len(req.Password) < 8 {
-		return nil, errors.New("password length must be 8 or more characters long")
-	}
-
-	exists, err := s.repo.UsernameExists(ctx, username)
+	exists, err := s.repo.UsernameExists(ctx, un)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("this username is already taken")
+		return nil, errors.New("username is already taken")
 	}
 
-	temporaryHash := "temp_hash_later_to_be_upgraded_using_argon2" + req.Password
-	
-	userModel, err := s.repo.CreateUser(ctx, username, displayName, temporaryHash)
+	hash, err := HashPassword(passwd)
 	if err != nil {
 		return nil, err
 	}
 
-	return userModel, nil
+	return s.repo.CreateUser(ctx, un, dn, hash)
 }
