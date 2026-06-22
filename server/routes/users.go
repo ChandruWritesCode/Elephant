@@ -7,4 +7,5 @@ import (
 
 func UserRoute(router chi.Router) {
 	router.Get("/", controllers.HandleUsers) // resolves to /api/users
+	router.Get("/search", controllers.HandleUserSearch) // resolves to /api/users/search
 }

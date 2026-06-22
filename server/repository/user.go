@@ -69,3 +69,37 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	}
 	return &user, nil
 }
+
+func (r *UserRepository) SearchUsers(ctx context.Context, searchTerm string, limit, offset int) ([]models.User, error) {
+	pattern := "%" + searchTerm + "%"
+
+	query := `
+		SELECT id, username, display_name, created_at
+		FROM users
+		WHERE username ILIKE $1 OR display_name ILIKE $2
+		ORDER BY username ASC
+		LIMIT $3 OFFSET $4;
+	`
+
+	rows, err := config.DB.Query(ctx, query, pattern, pattern, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []models.User = []models.User{}
+	for rows.Next() {
+		var u models.User
+		err := rows.Scan(&u.ID, &u.Username, &u.DisplayName, &u.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}

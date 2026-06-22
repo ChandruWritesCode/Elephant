@@ -1,42 +1,45 @@
 package env
 
 import (
-	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/joho/godotenv"
 )
 
 // global variables
 var (
-	// Server configurations
 	HOST string
 	PORT string
 
-	// PostgreSQL database coordinates
 	POSTGRES_USER     string
 	POSTGRES_PASSWORD string
 	POSTGRES_DB       string
 	POSTGRES_PORT     string
 	POSTGRES_HOST     string
 
-	// Security & Token configurations
 	JWT_SECRET string
 
-	// Cryptography parameters (Argon2id tuning)
 	ARGON_MEMORY      string
 	ARGON_ITERATIONS  string
 	ARGON_PARALLELISM string
 )
 
 func init() {
-	// load the file into the environment
-	if _, err := os.Stat("../.env"); err == nil {
-		if err := godotenv.Load("../.env"); err != nil {
-			log.Printf("Warning: Found .env but failed to parse it: %v", err)
+	cwd, err := os.Getwd()
+	if err == nil {
+		for {
+			target := filepath.Join(cwd, ".env")
+			if _, err := os.Stat(target); err == nil {
+				_ = godotenv.Load(target)
+				break
+			}
+			parent := filepath.Dir(cwd)
+			if parent == cwd {
+				break
+			}
+			cwd = parent
 		}
-	} else if _, err := os.Stat(".env"); err == nil {
-		_ = godotenv.Load(".env")
 	}
 
 	// assign the values with fallbacks
@@ -56,7 +59,6 @@ func init() {
 	ARGON_PARALLELISM = getEnv("ARGON_PARALLELISM", "2")
 }
 
-// Smart fallback defaults if an env variable is missing locally
 func getEnv(key, fallback string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
