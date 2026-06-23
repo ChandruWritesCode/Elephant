@@ -11,4 +11,5 @@ func ApiRoute(router chi.Router) {
 	// sub-routes
 	router.Route("/auth", AuthRoute)
 	router.Route("/users", UserRoute)
+	router.Route("/messages",MessageRoute)
 }
