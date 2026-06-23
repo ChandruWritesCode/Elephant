@@ -3,9 +3,12 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/commandlinecoding/elephant/server/middlewares"
 	"github.com/commandlinecoding/elephant/server/models"
+	"github.com/commandlinecoding/elephant/server/repository"
 	"github.com/commandlinecoding/elephant/server/services"
 )
 
@@ -47,4 +50,41 @@ func HandleSendMessage(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: msg})
+}
+
+func HandleGetChatHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	uid, _ := r.Context().Value(middlewares.UserIDKey).(string)
+	targetUser := r.URL.Query().Get("with")
+	beforeStr := r.URL.Query().Get("before")
+	limitStr := r.URL.Query().Get("limit")
+
+	if targetUser == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Missing target 'with' user query constraint"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(limitStr)
+	if limit <= 0 || limit > 100 {
+		limit = 50 // Reference requirement ceiling limit mapping
+	}
+
+	before := time.Now()
+	if beforeStr != "" {
+		if t, err := time.Parse(time.RFC3339, beforeStr); err == nil {
+			before = t
+		}
+	}
+
+	repo := repository.NewMessageRepository()
+	history, err := repo.GetChatHistory(r.Context(), uid, targetUser, before, limit)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to pull chat logs"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: history})
 }

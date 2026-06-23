@@ -8,5 +8,6 @@ import (
 
 func MessageRoute(router chi.Router) {
 	router.Use(middlewares.AuthGuard)
-	router.Post("/", controllers.HandleSendMessage) // Resolves to POST /api/messages
+	router.Post("/", controllers.HandleSendMessage)   // Resolves to POST /api/messages
+	router.Get("/", controllers.HandleGetChatHistory) // Resolves to GET /api/messages?with=UUID
 }
