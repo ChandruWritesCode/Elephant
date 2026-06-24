@@ -4,12 +4,16 @@ import (
 	"github.com/commandlinecoding/elephant/server/config"
 	"github.com/commandlinecoding/elephant/server/middlewares"
 	"github.com/commandlinecoding/elephant/server/routes"
+	"github.com/commandlinecoding/elephant/server/services"
 )
 
 func main() {
 	// db init
 	config.InitDatabase()
 	defer config.DB.Close()
+
+	// WS init
+	go services.Hub.Run()
 
 	// app init
 	app := config.App

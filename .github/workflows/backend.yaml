@@ -1,25 +1,23 @@
-name: Go Backend CI
+name: Go Integration & Test Suite
 
 on:
   push:
-    branches: [ main, v0.1.0 ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main, v0.1.0 ]
+    branches: [ main, dev ]
 
 jobs:
   test:
-    name: Run Backend Tests
     runs-on: ubuntu-latest
-
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16-alpine
         env:
-          POSTGRES_USER: elephant_user
-          POSTGRES_PASSWORD: elephant_secure_user
-          POSTGRES_DB: elephant_dev
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}        
         ports:
-          - 5432:5432
+          - 42359:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -27,20 +25,27 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Check out source code
-        uses: actions/checkout@v4
+    - name: Checkout source code
+      uses: actions/checkout@v4
 
-      - name: Set up Go environment
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.26.3'
+    - name: Set up Go runtime environment
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
 
-      - name: Install dependencies
-        run: |
-          cd server
-          go mod download
-
-      - name: Run Unit & Integration Tests
-        run: |
-          cd server
-          go test -v ./...
+    - name: Execute Package Test Automation Suite      
+      env:
+        HOST: ${{ vars.HOST }}
+        PORT: ${{ vars.PORT }}
+        POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }} # FIXED: Removed extra '{'
+        POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+        POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
+        POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        ARGON_MEMORY: ${{ vars.ARGON_MEMORY }}
+        ARGON_ITERATIONS: ${{ vars.ARGON_ITERATIONS }}
+        ARGON_PARALLELISM: ${{ vars.ARGON_PARALLELISM }}
+      run: |
+        cd server
+        go test -v ./...
