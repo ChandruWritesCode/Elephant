@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/commandlinecoding/elephant/server/middlewares"
 	"github.com/commandlinecoding/elephant/server/models"
 	"github.com/commandlinecoding/elephant/server/repository"
 	"github.com/commandlinecoding/elephant/server/services"
+	"github.com/go-chi/chi/v5"
 )
 
 func HandleUserSearch(w http.ResponseWriter, r *http.Request) {
@@ -65,10 +65,10 @@ func HandleGetMe(w http.ResponseWriter, r *http.Request) {
 func HandleGetUserByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	id := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
-
+	id := chi.URLParam(r, "id")
 	repo := repository.NewUserRepository()
 	user, err := repo.FindByID(r.Context(), id)
+
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Requested profile does not exist"})
