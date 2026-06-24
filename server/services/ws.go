@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/commandlinecoding/elephant/server/config"
 	"github.com/commandlinecoding/elephant/server/models"
 	"github.com/commandlinecoding/elephant/server/repository"
 	"github.com/gorilla/websocket"
@@ -125,25 +126,54 @@ func (c *WSClient) ReadPump() {
 			incoming.Timestamp = time.Now()
 
 			go func(msg models.WSMessage) {
-				_, err := msgRepo.CreateMessage(context.Background(), msg.SenderID, msg.ReceiverID, msg.Content)
+				query := `
+				INSERT INTO messages (sender_id, receiver_id, group_id, content, id)
+				VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5);
+			`
+				_, err := config.DB.Exec(context.Background(), query, msg.SenderID, msg.ReceiverID, msg.GroupID, msg.Content, msg.MessageID)
 				if err != nil {
-					log.Printf("Async DB write failure: %v", err)
-					return
+					log.Printf("Async group/direct write failure: %v", err)
 				}
 			}(incoming)
 
 			outboundBytes, _ := json.Marshal(incoming)
 
-			Hub.mu.RLock()
-			targetClient, online := Hub.clients[incoming.ReceiverID]
-			Hub.mu.RUnlock()
+			if incoming.GroupID != "" {
+				groupRepo := repository.NewGroupRepository()
+				members, err := groupRepo.GetGroupMembers(context.Background(), incoming.GroupID)
+				if err != nil {
+					log.Printf("Failed to resolve channel membership routing: %v", err)
+					continue
+				}
 
-			if online {
-				select {
-				case targetClient.Send <- outboundBytes:
-				default:
-					Hub.Unregister <- targetClient
-					targetClient.Conn.Close()
+				Hub.mu.RLock()
+				for _, memberID := range members {
+					if memberID == c.UserID {
+						continue
+					}
+					if targetClient, online := Hub.clients[memberID]; online {
+						select {
+						case targetClient.Send <- outboundBytes:
+						default:
+							Hub.Unregister <- targetClient
+							targetClient.Conn.Close()
+						}
+					}
+				}
+				Hub.mu.RUnlock()
+
+			} else {
+				Hub.mu.RLock()
+				targetClient, online := Hub.clients[incoming.ReceiverID]
+				Hub.mu.RUnlock()
+
+				if online {
+					select {
+					case targetClient.Send <- outboundBytes:
+					default:
+						Hub.Unregister <- targetClient
+						targetClient.Conn.Close()
+					}
 				}
 			}
 		}
