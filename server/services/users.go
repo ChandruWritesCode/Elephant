@@ -2,7 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"fmt"
+	"math/big"
+	"regexp"
 	"strings"
 
 	"github.com/commandlinecoding/elephant/server/models"
@@ -13,42 +17,77 @@ type UserService struct {
 	repo *repository.UserRepository
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
-	return &UserService{repo: repo}
+func NewUserService() *UserService {
+	return &UserService{repo: repository.NewUserRepository()}
 }
 
-type CreateUserRequest struct {
-	Username    string
-	DisplayName string
-	Password    string
-}
+func (s *UserService) Register(ctx context.Context, requestedName, dn, passwd string) (*models.User, error) {
+	requestedName = strings.ToLower(strings.TrimSpace(requestedName))
+	dn = strings.TrimSpace(dn)
 
-func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*models.User, error) {
-	username := strings.ToLower(strings.TrimSpace(req.Username))
-	displayName := strings.TrimSpace(req.DisplayName)
-
-	if username == "" || displayName == "" || req.Password == "" {
-		return nil, errors.New("all registration fields are required")
+	if len(requestedName) < 3 || len(requestedName) > 25 {
+		return nil, errors.New("username prefix must be between 3 and 25 characters")
 	}
 
-	if len(req.Password) < 8 {
-		return nil, errors.New("password length must be 8 or more characters long")
+	isAlphanumeric := regexp.MustCompile(`^[a-z0-9]+$`).MatchString
+	if !isAlphanumeric(requestedName) {
+		return nil, errors.New("username prefix must contain only alphanumeric characters")
 	}
 
-	exists, err := s.repo.UsernameExists(ctx, username)
+	if len(passwd) < 8 {
+		return nil, errors.New("password must be at least 8 characters long")
+	}
+	if dn == "" {
+		return nil, errors.New("display name cannot be empty")
+	}
+
+	// Generate format: {userdefinedunique}.{4digitrandomnumber}
+	var finalUsername string
+	maxRetries := 5
+	resolved := false
+
+	for i := 0; i < maxRetries; i++ {
+		nBig, err := rand.Int(rand.Reader, big.NewInt(9000))
+		if err != nil {
+			return nil, errors.New("failed to generate secure user discriminator")
+		}
+		discriminator := nBig.Int64() + 1000 // forces range [1000, 9999]
+
+		candidate := fmt.Sprintf("%s.%d", requestedName, discriminator)
+
+		exists, err := s.repo.UsernameExists(ctx, candidate)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			finalUsername = candidate
+			resolved = true
+			break
+		}
+	}
+
+	if !resolved {
+		return nil, errors.New("username namespace collision; please try again")
+	}
+
+	hash, err := HashPassword(passwd)
 	if err != nil {
 		return nil, err
 	}
-	if exists {
-		return nil, errors.New("this username is already taken")
-	}
 
-	temporaryHash := "temp_hash_later_to_be_upgraded_using_argon2" + req.Password
-	
-	userModel, err := s.repo.CreateUser(ctx, username, displayName, temporaryHash)
-	if err != nil {
-		return nil, err
-	}
+	return s.repo.CreateUser(ctx, finalUsername, dn, hash)
+}
 
-	return userModel, nil
+func (s *UserService) Search(ctx context.Context, query string, page, limit int) ([]models.User, error) {
+	query = strings.TrimSpace(query)
+
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	return s.repo.SearchUsers(ctx, query, limit, offset)
 }

@@ -6,6 +6,7 @@ import (
 )
 
 func AuthRoute(router chi.Router) {
-	router.Get("/", controllers.HandleAuth) // resolves to /api/auth/
-	// will be done in future!
+	router.Post("/register", controllers.HandleRegister)
+	router.Post("/login", controllers.HandleLogin)
+	router.Post("/refresh", controllers.HandleRefresh)
 }
