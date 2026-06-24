@@ -76,7 +76,51 @@ func (c *WSClient) ReadPump() {
 			continue
 		}
 
-		if incoming.Type == "chat" {
+		switch incoming.Type {
+		case "typing":
+			incoming.SenderID = c.UserID
+			outboundBytes, _ := json.Marshal(incoming)
+
+			Hub.mu.RLock()
+			targetClient, online := Hub.clients[incoming.ReceiverID]
+			Hub.mu.RUnlock()
+
+			if online {
+				select {
+				case targetClient.Send <- outboundBytes:
+				default:
+					Hub.Unregister <- targetClient
+					targetClient.Conn.Close()
+				}
+			}
+
+		case "read_receipt":
+			incoming.SenderID = c.UserID
+			incoming.Timestamp = time.Now()
+
+			go func(receiverID, senderID string) {
+				err := msgRepo.MarkAsRead(context.Background(), receiverID, senderID)
+				if err != nil {
+					log.Printf("Failed to update read state flags over WS link: %v", err)
+				}
+			}(c.UserID, incoming.ReceiverID)
+
+			outboundBytes, _ := json.Marshal(incoming)
+
+			Hub.mu.RLock()
+			targetClient, online := Hub.clients[incoming.ReceiverID]
+			Hub.mu.RUnlock()
+
+			if online {
+				select {
+				case targetClient.Send <- outboundBytes:
+				default:
+					Hub.Unregister <- targetClient
+					targetClient.Conn.Close()
+				}
+			}
+
+		case "chat":
 			incoming.SenderID = c.UserID
 			incoming.Timestamp = time.Now()
 
@@ -89,12 +133,9 @@ func (c *WSClient) ReadPump() {
 			}(incoming)
 
 			outboundBytes, _ := json.Marshal(incoming)
-			Hub.mu.RLock()
-			targetClient, online := Hub.clients[incoming.ReceiverID]
-			Hub.mu.RUnlock()
 
 			Hub.mu.RLock()
-			targetClient, online = Hub.clients[incoming.ReceiverID]
+			targetClient, online := Hub.clients[incoming.ReceiverID]
 			Hub.mu.RUnlock()
 
 			if online {
