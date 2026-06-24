@@ -2,19 +2,48 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:16
-    container_name: elephant-db-1    
-    env_file:
-      - ./.env
-    environment:      
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+    image: postgres:16-alpine
+    container_name: elephant_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - elephant_net
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: elephant_server
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - HOST=${HOST}
+      - PORT=${PORT}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PORT=5432
+      - POSTGRES_HOST=db
+      - JWT_SECRET=${JWT_SECRET}
+      - ARGON_MEMORY=${ARGON_MEMORY}
+      - ARGON_ITERATIONS=${ARGON_ITERATIONS}
+      - ARGON_PARALLELISM=${ARGON_PARALLELISM}
+    depends_on:
+      - db
+    networks:
+      - elephant_net
     restart: unless-stopped
 
 volumes:
   pgdata:
+
+networks:
+  elephant_net:
+    driver: bridge
