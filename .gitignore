@@ -32,5 +32,7 @@ go.work.sum
 # .idea/
 # .vscode/
 
+mob/windows
+
 # Keep database data folders out of version control
 pgdata/
