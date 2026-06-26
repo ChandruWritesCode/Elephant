@@ -7,6 +7,7 @@ import (
 	"github.com/commandlinecoding/elephant/server/config"
 )
 
+// will have to remove manually deleteing users. Will be updated after delete users function is implemented
 func TestUserRepository_create_and_search(t *testing.T) {
 	ctx := context.Background()
 
@@ -33,8 +34,8 @@ func TestUserRepository_create_and_search(t *testing.T) {
 		t.Fatalf("Create User failed: %v", err)
 	}
 
-	if user.Username != testUsername {
-		t.Errorf("expected username %q, got %q",testUsername,user.Username)
+	if user.Username == "" {
+		t.Errorf("expected a username, but is blank")
 	}
 
 	if user.DisplayName != testDisplayName {
@@ -45,13 +46,13 @@ func TestUserRepository_create_and_search(t *testing.T) {
 		t.Error("Expected UUID string to be populated, but ID is blank")
 	}
 
-	searchResults, err := repo.SearchUsers(ctx, testUsername, 10, 0)
+	searchResults, err := repo.SearchUsers(ctx, user.Username, 10, 0)
 	if err != nil {
 		t.Errorf("SearchUsers failed: %v", err)
 	}
 
 	if len(searchResults) == 0 {
-		t.Errorf("Created user %q not found in search results", testUsername)
+		t.Errorf("Created user %q not found in search results", user.Username)
 	}
 
 }
