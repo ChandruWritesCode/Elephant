@@ -93,9 +93,9 @@ func (c *WSClient) ReadPump() {
 			targetClient, online := Hub.clients[incoming.ReceiverID]
 			Hub.mu.RUnlock()
 
-			Hub.mu.RLock()
-			targetClient, online = Hub.clients[incoming.ReceiverID]
-			Hub.mu.RUnlock()
+			// Hub.mu.RLock()
+			// targetClient, online = Hub.clients[incoming.ReceiverID]
+			// Hub.mu.RUnlock()
 
 			if online {
 				select {
