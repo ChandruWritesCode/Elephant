@@ -70,7 +70,6 @@ func Test_Auth(t *testing.T) {
 		}
 
 		fullUsername = regResp.Data.User.Username
-		fmt.Printf("fullUsername= %s  password= %s\n",fullUsername,password)
 
 	})
 
@@ -99,7 +98,7 @@ func Test_Auth(t *testing.T) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("Expected 200 OK on login, got: %d %s %s", resp.StatusCode,fullUsername,password)
+			t.Fatalf("Expected 200 OK on login, got: %d", resp.StatusCode)
 		}
 
 		var loginResp struct {
@@ -151,4 +150,7 @@ func Test_Auth(t *testing.T) {
 			t.Fatalf("Expected 200 OK on token refresh, got: %d", resp.StatusCode)
 		}
 	})
+
+	// have to add function to delete created user
+	
 }
