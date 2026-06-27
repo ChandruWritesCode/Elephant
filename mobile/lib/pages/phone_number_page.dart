@@ -29,6 +29,7 @@ class PhoneNumberPage extends StatelessWidget {
             ),
             SizedBox(height: 20),
             IntlPhoneField(
+              initialCountryCode: 'IN',
               controller: numberController,
               decoration: InputDecoration(border: OutlineInputBorder()),
               onChanged: (value) {

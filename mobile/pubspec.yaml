@@ -39,6 +39,16 @@ dependencies:
   pinput: ^6.0.2
   provider: ^6.1.5+1
   image_picker: ^1.2.2
+  launcher_name: ^1.0.2
+  shared_preferences: ^2.5.5
+  flutter_launcher_icons: ^0.14.4
+
+launcher_name:
+  default: "Elephant"
+
+flutter_launcher_icons:
+  android: true
+  image_path: "assets/launcher/elephant.png"
 
 dev_dependencies:
   flutter_test:

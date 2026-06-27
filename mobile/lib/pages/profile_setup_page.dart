@@ -1,4 +1,5 @@
 import 'package:mob/pages/home_page.dart';
+import 'package:mob/providers/basic_providers.dart';
 import 'package:mob/providers/image_picker_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -72,10 +73,12 @@ class ProfileSetupPage extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => HomePage()),
-                      (route) => false,
+                    Navigator.popUntil(context, (route) => false);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const HomePage()),
                     );
+                    context.read<BasicProviders>().logIn();
                   },
                   child: Row(
                     mainAxisAlignment: .center,
