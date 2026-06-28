@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/commandlinecoding/elephant/server/config"
 	"github.com/commandlinecoding/elephant/server/models"
 	"github.com/commandlinecoding/elephant/server/repository"
 	"github.com/gorilla/websocket"
@@ -76,26 +77,14 @@ func (c *WSClient) ReadPump() {
 			continue
 		}
 
-		if incoming.Type == "chat" {
+		switch incoming.Type {
+		case "typing":
 			incoming.SenderID = c.UserID
-			incoming.Timestamp = time.Now()
-
-			go func(msg models.WSMessage) {
-				_, err := msgRepo.CreateMessage(context.Background(), msg.SenderID, msg.ReceiverID, msg.Content)
-				if err != nil {
-					log.Printf("Async DB write failure: %v", err)
-					return
-				}
-			}(incoming)
-
 			outboundBytes, _ := json.Marshal(incoming)
+
 			Hub.mu.RLock()
 			targetClient, online := Hub.clients[incoming.ReceiverID]
 			Hub.mu.RUnlock()
-
-			// Hub.mu.RLock()
-			// targetClient, online = Hub.clients[incoming.ReceiverID]
-			// Hub.mu.RUnlock()
 
 			if online {
 				select {
@@ -103,6 +92,88 @@ func (c *WSClient) ReadPump() {
 				default:
 					Hub.Unregister <- targetClient
 					targetClient.Conn.Close()
+				}
+			}
+
+		case "read_receipt":
+			incoming.SenderID = c.UserID
+			incoming.Timestamp = time.Now()
+
+			go func(receiverID, senderID string) {
+				err := msgRepo.MarkAsRead(context.Background(), receiverID, senderID)
+				if err != nil {
+					log.Printf("Failed to update read state flags over WS link: %v", err)
+				}
+			}(c.UserID, incoming.ReceiverID)
+
+			outboundBytes, _ := json.Marshal(incoming)
+
+			Hub.mu.RLock()
+			targetClient, online := Hub.clients[incoming.ReceiverID]
+			Hub.mu.RUnlock()
+
+			if online {
+				select {
+				case targetClient.Send <- outboundBytes:
+				default:
+					Hub.Unregister <- targetClient
+					targetClient.Conn.Close()
+				}
+			}
+
+		case "chat":
+			incoming.SenderID = c.UserID
+			incoming.Timestamp = time.Now()
+
+			go func(msg models.WSMessage) {
+				query := `
+				INSERT INTO messages (sender_id, receiver_id, group_id, content, id)
+				VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5);
+			`
+				_, err := config.DB.Exec(context.Background(), query, msg.SenderID, msg.ReceiverID, msg.GroupID, msg.Content, msg.MessageID)
+				if err != nil {
+					log.Printf("Async group/direct write failure: %v", err)
+				}
+			}(incoming)
+
+			outboundBytes, _ := json.Marshal(incoming)
+
+			if incoming.GroupID != "" {
+				groupRepo := repository.NewGroupRepository()
+				members, err := groupRepo.GetGroupMembers(context.Background(), incoming.GroupID)
+				if err != nil {
+					log.Printf("Failed to resolve channel membership routing: %v", err)
+					continue
+				}
+
+				Hub.mu.RLock()
+				for _, memberID := range members {
+					if memberID == c.UserID {
+						continue
+					}
+					if targetClient, online := Hub.clients[memberID]; online {
+						select {
+						case targetClient.Send <- outboundBytes:
+						default:
+							Hub.Unregister <- targetClient
+							targetClient.Conn.Close()
+						}
+					}
+				}
+				Hub.mu.RUnlock()
+
+			} else {
+				Hub.mu.RLock()
+				targetClient, online := Hub.clients[incoming.ReceiverID]
+				Hub.mu.RUnlock()
+
+				if online {
+					select {
+					case targetClient.Send <- outboundBytes:
+					default:
+						Hub.Unregister <- targetClient
+						targetClient.Conn.Close()
+					}
 				}
 			}
 		}

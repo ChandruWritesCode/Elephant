@@ -88,3 +88,56 @@ func HandleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: history})
 }
+
+func HandleGetConversations(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	uid, ok := r.Context().Value(middlewares.UserIDKey).(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Unauthorized context"})
+		return
+	}
+
+	repo := repository.NewMessageRepository()
+	list, err := repo.GetConversations(r.Context(), uid)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to compile inbox conversations"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: list})
+}
+
+type ReadReceiptReq struct {
+	SenderID string `json:"sender_id"`
+}
+
+func HandleMarkRead(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	uid, _ := r.Context().Value(middlewares.UserIDKey).(string)
+
+	var req ReadReceiptReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Invalid payload layout"})
+		return
+	}
+
+	if req.SenderID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Sender identification missing"})
+		return
+	}
+
+	repo := repository.NewMessageRepository()
+	if err := repo.MarkAsRead(r.Context(), uid, req.SenderID); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to clear unread receipts"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: "Target messages marked read successfully"})
+}

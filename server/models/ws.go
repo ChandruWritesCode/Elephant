@@ -6,6 +6,7 @@ type WSMessage struct {
 	Type       string    `json:"type"`
 	SenderID   string    `json:"sender_id,omitempty"`
 	ReceiverID string    `json:"receiver_id,omitempty"`
+	GroupID    string    `json:"group_id,omitempty"`
 	Content    string    `json:"content,omitempty"`
 	MessageID  string    `json:"message_id,omitempty"`
 	Timestamp  time.Time `json:"timestamp,omitempty"`
