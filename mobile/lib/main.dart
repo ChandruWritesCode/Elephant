@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
             scrolledUnderElevation: 0,
             elevation: 0,
           ),
-          scaffoldBackgroundColor: const Color.fromARGB(255, 196, 195, 200),
+          scaffoldBackgroundColor: const Color.fromARGB(255, 192, 195, 205),
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.blue,
             primary: Colors.blue[700],

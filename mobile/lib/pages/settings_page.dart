@@ -27,7 +27,9 @@ class SettingsPage extends StatelessWidget {
             elevation: 0,
             backgroundColor: Colors.transparent,
             flexibleSpace: ClipRRect(
+              clipBehavior: Clip.antiAlias,
               child: BackdropFilter(
+                enabled: true,
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
                   color: const Color.fromARGB(78, 255, 255, 255),

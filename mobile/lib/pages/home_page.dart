@@ -53,7 +53,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               Icon(
                 isSelected ? activeIcon : icon,
-                color: Colors.black87,
+                color: isSelected ? Colors.blueAccent : Colors.black54,
                 size: 24,
               ),
               AnimatedSize(
@@ -63,10 +63,12 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w600,
+                      color: isSelected ? Colors.blueAccent : Colors.black54,
                     ),
                   ),
                 ),
@@ -78,17 +80,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildGlassNavigationBar() {
+  Widget buildGlassNavigationBar() {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 15),
+        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            // LOWERED BLUR: from 20 to 12
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
-              height: 60,
-              color: const Color.fromARGB(78, 255, 255, 255),
+              height: 65,
+              decoration: BoxDecoration(
+                // LOWERED OPACITY: from 150 to 40
+                color: const Color.fromARGB(40, 255, 255, 255),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  // LOWERED BORDER OPACITY: from 0.6 to 0.3
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final tabWidth = constraints.maxWidth / 3;
@@ -96,29 +108,25 @@ class _HomePageState extends State<HomePage> {
                   return Stack(
                     children: [
                       AnimatedPositioned(
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.decelerate,
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOutCubic,
                         left: _page * tabWidth,
                         top: 0,
                         bottom: 0,
                         width: tabWidth,
                         child: Padding(
-                          padding: const EdgeInsets.all(6.0),
+                          padding: const EdgeInsets.all(8.0),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(123, 255, 255, 255),
-                              borderRadius: BorderRadius.circular(15),
+                              // Using a highly transparent white for the active tab pill
+                              color: Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color.fromARGB(
-                                    255,
-                                    0,
-                                    0,
-                                    0,
-                                  ).withValues(alpha: 0.08),
-                                  blurRadius: 10,
-                                  spreadRadius: 2,
-                                  offset: const Offset(0, 0),
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -161,7 +169,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildHomeTab() {
+  Widget buildHomeTab() {
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -180,7 +188,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           actionsPadding: const EdgeInsets.symmetric(horizontal: 15),
-          leading: const Icon(Icons.security),
+          leading: const Icon(Icons.security, color: Colors.black87),
           title: AnimatedSwitcher(
             switchInCurve: Curves.decelerate,
             switchOutCurve: Curves.decelerate,
@@ -194,19 +202,34 @@ class _HomePageState extends State<HomePage> {
               return SlideTransition(position: offsetAnimation, child: child);
             },
             child: _isSearchOpen
-                ? TextField(
-                    controller: _searchController,
-                    key: const ValueKey('search'),
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      border: OutlineInputBorder(borderSide: BorderSide.none),
+                ? SizedBox(
+                    height: 40,
+                    child: TextField(
+                      controller: _searchController,
+                      key: const ValueKey('search'),
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                        filled: true,
+                        // Kept search background subtle
+                        fillColor: Colors.black.withValues(alpha: 0.05),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 0,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
                     ),
                   )
                 : const Text(
                     'Elephant',
                     style: TextStyle(
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w400,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
                     key: ValueKey('title'),
                   ),
@@ -216,17 +239,23 @@ class _HomePageState extends State<HomePage> {
               onPressed: () {
                 setState(() {
                   _isSearchOpen = !_isSearchOpen;
+                  if (!_isSearchOpen) _searchController.clear();
                 });
               },
-              icon: const Icon(Icons.search),
+              icon: Icon(
+                _isSearchOpen ? Icons.close : Icons.search,
+                color: Colors.black87,
+              ),
             ),
           ],
         ),
         SliverList.builder(
           itemCount: 20,
-          itemBuilder: (context, index) => chatCard(),
+          itemBuilder: (context, index) => chatCard(context),
         ),
-        SliverList(delegate: SliverChildListDelegate([SizedBox(height: 100)])),
+        SliverList(
+          delegate: SliverChildListDelegate([const SizedBox(height: 120)]),
+        ),
       ],
     );
   }
@@ -236,17 +265,15 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       extendBody: true,
-
       body: IndexedStack(
         index: _page,
         children: [
-          _buildHomeTab(),
+          buildHomeTab(),
           const Center(child: Text("Call Page Content")),
           SettingsPage(),
         ],
       ),
-
-      bottomNavigationBar: _buildGlassNavigationBar(),
+      bottomNavigationBar: buildGlassNavigationBar(),
     );
   }
 }
