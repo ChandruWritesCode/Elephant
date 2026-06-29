@@ -36,7 +36,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, senderID, receive
 
 func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB string, before time.Time, limit int) ([]models.Message, error) {
 	query := `
-		SELECT id, sender_id, receiver_id, content, created_at
+		SELECT id, sender_id, receiver_id, content, created_at, is_read
 		FROM messages
 		WHERE ((sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1))
 		  AND created_at < $3
@@ -52,7 +52,7 @@ func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB str
 	var history []models.Message = []models.Message{}
 	for rows.Next() {
 		var m models.Message
-		err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.CreatedAt)
+		err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.CreatedAt, &m.IsRead)
 		if err != nil {
 			return nil, err
 		}

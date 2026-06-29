@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,19 +33,44 @@ var Hub = &WSHub{
 	Unregister: make(chan *WSClient),
 }
 
+func (h *WSHub) broadcastStatus(userID string, online bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	msg := map[string]interface{}{
+		"type":    "user_status",
+		"user_id": userID,
+		"online":  online,
+	}
+	bytes, _ := json.Marshal(msg)
+
+	for _, client := range h.clients {
+		if !strings.EqualFold(client.UserID, userID) {
+			select {
+			case client.Send <- bytes:
+			default:
+			}
+		}
+	}
+}
+
 func (h *WSHub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
 			h.mu.Lock()
-			h.clients[client.UserID] = client
+			// FIXED: Store keys in lowercase to make lookups case-insensitive
+			h.clients[strings.ToLower(client.UserID)] = client
 			h.mu.Unlock()
+			go h.broadcastStatus(client.UserID, true)
 
 		case client := <-h.Unregister:
 			h.mu.Lock()
-			if _, exists := h.clients[client.UserID]; exists {
-				delete(h.clients, client.UserID)
+			lowerUID := strings.ToLower(client.UserID)
+			if _, exists := h.clients[lowerUID]; exists {
+				delete(h.clients, lowerUID)
 				close(client.Send)
+				go h.broadcastStatus(client.UserID, false)
 			}
 			h.mu.Unlock()
 		}
@@ -78,12 +104,29 @@ func (c *WSClient) ReadPump() {
 		}
 
 		switch incoming.Type {
+		case "request_status":
+			Hub.mu.RLock()
+			// FIXED: Standardize lookup to lowercase
+			_, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
+			Hub.mu.RUnlock()
+
+			resp := map[string]interface{}{
+				"type":    "user_status",
+				"user_id": incoming.ReceiverID,
+				"online":  online,
+			}
+			respBytes, _ := json.Marshal(resp)
+			select {
+			case c.Send <- respBytes:
+			default:
+			}
+
 		case "typing":
 			incoming.SenderID = c.UserID
 			outboundBytes, _ := json.Marshal(incoming)
 
 			Hub.mu.RLock()
-			targetClient, online := Hub.clients[incoming.ReceiverID]
+			targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
 			Hub.mu.RUnlock()
 
 			if online {
@@ -109,7 +152,7 @@ func (c *WSClient) ReadPump() {
 			outboundBytes, _ := json.Marshal(incoming)
 
 			Hub.mu.RLock()
-			targetClient, online := Hub.clients[incoming.ReceiverID]
+			targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
 			Hub.mu.RUnlock()
 
 			if online {
@@ -127,9 +170,9 @@ func (c *WSClient) ReadPump() {
 
 			go func(msg models.WSMessage) {
 				query := `
-				INSERT INTO messages (sender_id, receiver_id, group_id, content, id)
-				VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5);
-			`
+					INSERT INTO messages (sender_id, receiver_id, group_id, content, id)
+					VALUES ($1::uuid, NULLIF($2, '')::uuid, NULLIF($3, '')::uuid, $4, COALESCE(NULLIF($5, '')::uuid, gen_random_uuid()));
+				`
 				_, err := config.DB.Exec(context.Background(), query, msg.SenderID, msg.ReceiverID, msg.GroupID, msg.Content, msg.MessageID)
 				if err != nil {
 					log.Printf("Async group/direct write failure: %v", err)
@@ -151,7 +194,7 @@ func (c *WSClient) ReadPump() {
 					if memberID == c.UserID {
 						continue
 					}
-					if targetClient, online := Hub.clients[memberID]; online {
+					if targetClient, online := Hub.clients[strings.ToLower(memberID)]; online {
 						select {
 						case targetClient.Send <- outboundBytes:
 						default:
@@ -164,7 +207,7 @@ func (c *WSClient) ReadPump() {
 
 			} else {
 				Hub.mu.RLock()
-				targetClient, online := Hub.clients[incoming.ReceiverID]
+				targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
 				Hub.mu.RUnlock()
 
 				if online {
