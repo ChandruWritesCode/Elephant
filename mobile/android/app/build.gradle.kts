@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.elephant_frontend"
-    namespace = "in.commandlinecoding.elephant.mob"
+    namespace = "in.commandlinecoding.elephant"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -18,7 +18,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.elephant_frontend"
-        applicationId = "in.commandlinecoding.elephant.mob"
+        applicationId = "in.commandlinecoding.elephant"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
