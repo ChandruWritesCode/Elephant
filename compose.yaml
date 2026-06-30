@@ -17,9 +17,7 @@ services:
     restart: unless-stopped
 
   server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    image: ghcr.io/commandlinecoding/elephant:v0.1.5
     container_name: elephant_server
     ports:
       - "${PORT}:${PORT}"
