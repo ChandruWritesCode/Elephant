@@ -34,7 +34,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,event=tagv0.1.5
+            type=raw,value=v0.1.5
             type=raw,value=latest
 
       - name: Set up Docker Buildx
