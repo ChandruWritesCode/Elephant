@@ -1,9 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/widgets/custom_cards.dart';
 import 'package:provider/provider.dart';
-import 'package:mob/pages/settings_page.dart';
-import 'package:mob/controllers/chat.dart';
-import 'chat_page.dart';
+import 'new_chat_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,7 +14,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late bool _isSearchOpen;
-  int _page = 0;
+  int _page = 1;
   final _searchController = TextEditingController();
 
   @override
@@ -55,22 +55,31 @@ class _HomePageState extends State<HomePage> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected ? Colors.blueAccent : Colors.black54,
-                size: 24,
+              AnimatedScale(
+                scale: isSelected ? 1.15 : 1.0,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutBack,
+                child: Icon(
+                  isSelected ? activeIcon : icon,
+                  color: isSelected ? const Color(0xFF1890FF) : Colors.black54,
+                  size: 24,
+                ),
               ),
               AnimatedSize(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 250),
                 curve: Curves.decelerate,
                 child: Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isSelected ? Colors.blueAccent : Colors.black54,
+                      fontSize: 11,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w600,
+                      color: isSelected
+                          ? const Color(0xFF1890FF)
+                          : Colors.black54,
                     ),
                   ),
                 ),
@@ -85,20 +94,34 @@ class _HomePageState extends State<HomePage> {
   Widget buildGlassNavigationBar() {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              height: 65,
+              height: 68,
               decoration: BoxDecoration(
-                color: const Color.fromARGB(40, 255, 255, 255),
+                color: Colors.white.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withValues(alpha: 0.45),
                   width: 1.5,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFF1890FF).withValues(alpha: 0.03),
+                    blurRadius: 16,
+                    spreadRadius: -4,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -107,24 +130,28 @@ class _HomePageState extends State<HomePage> {
                   return Stack(
                     children: [
                       AnimatedPositioned(
-                        duration: const Duration(milliseconds: 400),
+                        duration: const Duration(milliseconds: 350),
                         curve: Curves.easeOutCubic,
                         left: _page * tabWidth,
                         top: 0,
                         bottom: 0,
                         width: tabWidth,
                         child: Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: Colors.white.withValues(alpha: 0.85),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                  offset: const Offset(0, 2),
+                                  color: const Color(
+                                    0xFF1890FF,
+                                  ).withValues(alpha: 0.08),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
@@ -135,23 +162,23 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           _buildNavItem(
                             index: 0,
-                            icon: Icons.home_outlined,
-                            activeIcon: Icons.home_filled,
-                            label: 'Home',
+                            icon: Icons.amp_stories_outlined,
+                            activeIcon: Icons.amp_stories,
+                            label: 'Story',
                             width: tabWidth,
                           ),
                           _buildNavItem(
                             index: 1,
-                            icon: Icons.call_outlined,
-                            activeIcon: Icons.call,
-                            label: 'Call',
+                            icon: Icons.chat_bubble_outline,
+                            activeIcon: Icons.chat_bubble,
+                            label: 'Chat',
                             width: tabWidth,
                           ),
                           _buildNavItem(
                             index: 2,
-                            icon: Icons.settings_outlined,
-                            activeIcon: Icons.settings,
-                            label: 'Settings',
+                            icon: Icons.call_outlined,
+                            activeIcon: Icons.call,
+                            label: 'Call',
                             width: tabWidth,
                           ),
                         ],
@@ -167,10 +194,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget buildHomeTab() {
-    final chatState = context.watch<ChatController>();
-
+  Widget buildHomeTab(ChatController chatState) {
     return RefreshIndicator(
+      color: const Color(0xFF1890FF),
       onRefresh: () => chatState.loadInbox(),
       child: CustomScrollView(
         slivers: [
@@ -178,7 +204,7 @@ class _HomePageState extends State<HomePage> {
             shadowColor: Colors.transparent,
             scrolledUnderElevation: 0,
             pinned: true,
-            centerTitle: true,
+            centerTitle: false,
             elevation: 0,
             backgroundColor: Colors.transparent,
             flexibleSpace: ClipRRect(
@@ -186,18 +212,25 @@ class _HomePageState extends State<HomePage> {
               child: BackdropFilter(
                 enabled: true,
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(color: const Color.fromARGB(78, 255, 255, 255)),
+                child: Container(color: Colors.white.withValues(alpha: 0.4)),
               ),
             ),
-            actionsPadding: const EdgeInsets.symmetric(horizontal: 15),
-            leading: const Icon(Icons.security, color: Colors.black87),
+            leading: const Padding(
+              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 10.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFFD6E4FF),
+                child: Icon(Icons.person, color: Color(0xFF1890FF), size: 18),
+              ),
+            ),
+            leadingWidth: 52,
             title: AnimatedSwitcher(
               switchInCurve: Curves.decelerate,
               switchOutCurve: Curves.decelerate,
               duration: const Duration(milliseconds: 300),
               transitionBuilder: (child, animation) {
                 final tween = Tween<Offset>(
-                  begin: const Offset(1.0, 0.0),
+                  begin: const Offset(0.5, 0.0),
                   end: Offset.zero,
                 );
                 final offsetAnimation = tween.animate(animation);
@@ -210,8 +243,10 @@ class _HomePageState extends State<HomePage> {
                         controller: _searchController,
                         key: const ValueKey('search'),
                         autofocus: true,
+                        style: const TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
-                          hintText: 'Search...',
+                          hintText: 'Search conversations...',
+                          hintStyle: const TextStyle(color: Colors.black38),
                           filled: true,
                           fillColor: Colors.black.withValues(alpha: 0.05),
                           contentPadding: const EdgeInsets.symmetric(
@@ -228,8 +263,9 @@ class _HomePageState extends State<HomePage> {
                   : const Text(
                       'Elephant',
                       style: TextStyle(
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                       key: ValueKey('title'),
@@ -248,92 +284,30 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.black87,
                 ),
               ),
+              if (!_isSearchOpen)
+                IconButton(
+                  icon: const Icon(Icons.more_vert, color: Colors.black87),
+                  onPressed: () {},
+                ),
+              const SizedBox(width: 4),
             ],
           ),
+
           chatState.inbox.isEmpty
               ? const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: Text("No conversations found", style: TextStyle(color: Colors.grey, fontSize: 15)),
+                    child: Text(
+                      "No conversations yet",
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
                 )
               : SliverList.builder(
                   itemCount: chatState.inbox.length,
                   itemBuilder: (context, index) {
                     final thread = chatState.inbox[index];
-
-                    return InkWell(
-                      onTap: () {
-                        context.read<ChatController>().openChat(thread.chatUserId);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ChatPage(
-                              chatUserId: thread.chatUserId,
-                              displayName: thread.displayName,
-                            ),
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(
-                              radius: 26,
-                              backgroundColor: Color(0xFFD6E4FF),
-                              child: Icon(Icons.person, color: Color(0xFF1890FF)),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    thread.displayName,
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Text(
-                                    thread.lastMessage,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: thread.unreadCount > 0 ? Colors.black87 : Colors.black54,
-                                      fontWeight: thread.unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  "${thread.lastMessageTime.hour}:${thread.lastMessageTime.minute.toString().padLeft(2, '0')}",
-                                  style: const TextStyle(fontSize: 12, color: Colors.black38),
-                                ),
-                                if (thread.unreadCount > 0)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.blueAccent,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      "${thread.unreadCount}",
-                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return CustomChatCard(conversation: thread);
                   },
                 ),
           SliverList(
@@ -346,17 +320,46 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final chatState = context.watch<ChatController>();
+
     return Scaffold(
+      backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
       extendBody: true,
       body: IndexedStack(
         index: _page,
         children: [
-          buildHomeTab(),
-          const Center(child: Text("Call Page Content")),
-          SettingsPage(),
+          const Center(
+            child: Text(
+              "No stories available",
+              style: TextStyle(color: Colors.black54, fontSize: 16),
+            ),
+          ),
+          buildHomeTab(chatState),
+          const Center(
+            child: Text(
+              "No recent calls",
+              style: TextStyle(color: Colors.black54, fontSize: 16),
+            ),
+          ),
         ],
       ),
+      floatingActionButton: _page == 1
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 75),
+              child: FloatingActionButton(
+                heroTag: "fab_pen",
+                backgroundColor: const Color(0xFF1890FF),
+                child: const Icon(Icons.edit, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NewChatPage()),
+                  );
+                },
+              ),
+            )
+          : null,
       bottomNavigationBar: buildGlassNavigationBar(),
     );
   }

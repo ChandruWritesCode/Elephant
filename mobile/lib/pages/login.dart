@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/constants.dart';
 import '../controllers/auth.dart';
-import '../controllers/chat.dart';
-import 'home_page.dart';
-import 'register.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,107 +10,594 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _formKey = GlobalKey<FormState>();
+
   final _usernameController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  void _showServerConfigSheet() {
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _usernameController.dispose();
+    _displayNameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _openServerConfigDialog() {
     final hostController = TextEditingController(text: Env.host);
     final portController = TextEditingController(text: Env.port);
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          top: 24.0,
-          left: 24.0,
-          right: 24.0,
-          bottom: 24.0 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Row(
           children: [
-            const Text("Server Configuration", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(controller: hostController, decoration: const InputDecoration(labelText: "Server Address", hintText: "elephant.commandlinecoding.in")),
-            const SizedBox(height: 12),
-            TextField(controller: portController, decoration: const InputDecoration(labelText: "Port", hintText: "80"), keyboardType: TextInputType.number),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () async {
-                await Env.updateConfig(hostController.text, portController.text);
-                if (context.mounted) {
-                  setState(() {});
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text("Save Server Settings"),
+            Icon(Icons.dns, color: Color(0xFF0052CC)),
+            SizedBox(width: 8),
+            Text(
+              "Server Settings",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Enter your decentralized peer node coordinates:",
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Host",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: hostController,
+              style: const TextStyle(color: Colors.black87, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: Env.defaultHost,
+                filled: true,
+                fillColor: const Color(0xFFF4F5F7),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              "Port",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: portController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.black87, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: Env.defaultPort,
+                filled: true,
+                fillColor: const Color(0xFFF4F5F7),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final navigator = Navigator.of(dialogContext);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+              await Env.updateConfig(Env.defaultHost, Env.defaultPort);
+
+              navigator.pop();
+              setState(() {});
+              scaffoldMessenger.showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    "Reset connection to elephant.commandlinecoding.in",
+                  ),
+                ),
+              );
+            },
+            child: const Text(
+              "Reset Default",
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0052CC),
+            ),
+            onPressed: () async {
+              final newHost = hostController.text.trim();
+              final newPort = portController.text.trim();
+
+              final navigator = Navigator.of(dialogContext);
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+              await Env.updateConfig(newHost, newPort);
+
+              navigator.pop();
+              setState(() {});
+              scaffoldMessenger.showSnackBar(
+                SnackBar(
+                  content: Text("Target base set to: ${Env.httpBaseUrl}"),
+                ),
+              );
+            },
+            child: const Text("Save", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final auth = context.read<AuthState>();
+      if (_tabController.index == 0) {
+        auth.handleLogin(
+          _usernameController.text.trim(),
+          _passwordController.text.trim(),
+        );
+      } else {
+        auth.handleRegister(
+          _usernameController.text.trim(),
+          _displayNameController.text.trim(),
+          _passwordController.text.trim(),
+        );
+      }
+    }
+  }
+
+  Widget _buildSocialButton({required String label, required IconData icon}) {
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: () {},
+        icon: Icon(icon, color: Colors.black87, size: 18),
+        label: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFFDFE1E6)),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );
   }
 
-  void _submit() async {
-    final auth = context.read<AuthState>();
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (username.isEmpty || password.isEmpty) return;
-
-    final success = await auth.handleLogin(username, password);
-    if (success && mounted) {
-      final token = await auth.checkAutoLogin();
-      if (token != null) {
-        await context.read<ChatController>().initSession(token);
-        if (mounted) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
-        }
-      }
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(auth.errorMessage ?? "Authentication failed")),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthState>();
+    final authState = context.watch<AuthState>();
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text("Elephant Chat", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _showServerConfigSheet,
-              child: Text(
-                "Connected to: ${Env.host}:${Env.port} ⚙️",
-                style: const TextStyle(color: Colors.blueAccent, fontSize: 13, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.center,
+      backgroundColor: const Color(0xFFFAFBFC),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE3E6EB), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.security_rounded,
+                        color: Color(0xFF0052CC),
+                        size: 28,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Elephant',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(
+                            0xFF0052CC,
+                          ).withValues(alpha: 0.95),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  Text(
+                    _tabController.index == 0
+                        ? 'Welcome Back'
+                        : 'Create Account',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF172B4D),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _tabController.index == 0
+                        ? 'Access your secure workspace'
+                        : 'Join the peer mesh platform',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF5E6C84),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  Container(
+                    height: 46,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBECF0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      onTap: (index) => setState(() {}),
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      labelColor: const Color(0xFF0052CC),
+                      unselectedLabelColor: const Color(0xFF5E6C84),
+                      indicator: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      tabs: const [
+                        Tab(
+                          child: Text(
+                            'Login',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Tab(
+                          child: Text(
+                            'Register',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  if (authState.errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBE6),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFFFBDAD)),
+                      ),
+                      child: Text(
+                        authState.errorMessage!,
+                        style: const TextStyle(
+                          color: Color(0xFFBF2600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
+                  const Text(
+                    "Username",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF172B4D),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _usernameController,
+                    style: const TextStyle(color: Colors.black87, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: "elephant_user",
+                      hintStyle: const TextStyle(color: Colors.black38),
+                      filled: true,
+                      fillColor: const Color(0xFFF4F5F7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
+                    validator: (val) => (val == null || val.trim().isEmpty)
+                        ? 'Required field'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (_tabController.index == 1) ...[
+                    const Text(
+                      "Display Name",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF172B4D),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _displayNameController,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 14,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "John Doe",
+                        hintStyle: const TextStyle(color: Colors.black38),
+                        filled: true,
+                        fillColor: const Color(0xFFF4F5F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                      validator: (val) => (val == null || val.trim().isEmpty)
+                          ? 'Required field'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Password",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF172B4D),
+                        ),
+                      ),
+                      if (_tabController.index == 0)
+                        TextButton(
+                          onPressed: () {},
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                          ),
+                          child: const Text(
+                            "Forgot Password?",
+                            style: TextStyle(
+                              color: Color(0xFF0052CC),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    style: const TextStyle(color: Colors.black87, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: "••••••••",
+                      hintStyle: const TextStyle(color: Colors.black38),
+                      filled: true,
+                      fillColor: const Color(0xFFF4F5F7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                    ),
+                    validator: (val) => (val == null || val.trim().length < 6)
+                        ? 'Must be at least 6 characters'
+                        : null,
+                  ),
+                  const SizedBox(height: 24),
+
+                  ElevatedButton(
+                    onPressed: authState.isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0052CC),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: authState.isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Text(
+                            _tabController.index == 0 ? 'Sign In' : 'Sign Up',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  const Row(
+                    children: [
+                      Expanded(child: Divider(color: Color(0xFFDFE1E6))),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          "or sign in with",
+                          style: TextStyle(
+                            color: Color(0xFF5E6C84),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Color(0xFFDFE1E6))),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    children: [
+                      _buildSocialButton(
+                        label: "Google",
+                        icon: Icons.g_mobiledata,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildSocialButton(label: "GitHub", icon: Icons.code),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE3FCEF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFABF5D1)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Color(0xFF36B37E),
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            "End-to-end encrypted session",
+                            style: TextStyle(
+                              color: Color(0xFF006644),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _openServerConfigDialog,
+                      icon: const Icon(
+                        Icons.dns_outlined,
+                        size: 14,
+                        color: Color(0xFF5E6C84),
+                      ),
+                      label: Text(
+                        "Connected to: ${Env.host}:${Env.port} ⚙️",
+                        style: const TextStyle(
+                          color: Color(0xFF5E6C84),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 40),
-            TextField(controller: _usernameController, decoration: const InputDecoration(labelText: "Username")),
-            const SizedBox(height: 16),
-            TextField(controller: _passwordController, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
-            const SizedBox(height: 24),
-            auth.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ElevatedButton(onPressed: _submit, child: const Text("Login")),
-            TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterPage())),
-              child: const Text("Create an account"),
-            )
-          ],
+          ),
         ),
       ),
     );

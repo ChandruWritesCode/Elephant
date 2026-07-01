@@ -11,9 +11,11 @@ class ChatController extends ChangeNotifier {
 
   List<Conversation> inbox = [];
   List<Message> activeChat = [];
+  List<dynamic> contactSearchResults = [];
   String? currentChatUserId;
   bool isPeerTyping = false;
   bool isPeerOnline = false;
+  bool isSearchLoading = false;
 
   Future<void> initSession(String token) async {
     await _ws.connect(token);
@@ -34,9 +36,16 @@ class ChatController extends ChangeNotifier {
   Future<void> loadInbox() async {
     try {
       final res = await _api.getConversations();
-      if (res.data['success'] == true && res.data['data'] != null) {
-        final List rawList = res.data['data'];
-        inbox = rawList.map((json) => Conversation.fromJson(json)).toList();
+      dynamic targetData;
+
+      if (res.data is List) {
+        targetData = res.data;
+      } else if (res.data is Map) {
+        targetData = res.data['data'] ?? res.data['conversations'] ?? res.data;
+      }
+
+      if (targetData is List) {
+        inbox = targetData.map((json) => Conversation.fromJson(json)).toList();
         notifyListeners();
       }
     } catch (e) {
@@ -48,22 +57,67 @@ class ChatController extends ChangeNotifier {
     currentChatUserId = targetUid;
     activeChat.clear();
     isPeerTyping = false;
-    isPeerOnline = false; 
+    isPeerOnline = false;
     notifyListeners();
 
     try {
       final res = await _api.getChatHistory(targetUid);
-      if (res.data['success'] == true && res.data['data'] != null) {
-        final List rawHistory = res.data['data'];
-        activeChat = rawHistory.map((json) => Message.fromJson(json)).toList().reversed.toList();
+      dynamic targetData;
+
+      if (res.data is List) {
+        targetData = res.data;
+      } else if (res.data is Map) {
+        targetData = res.data['data'] ?? res.data['messages'] ?? res.data;
       }
+
+      if (targetData is List) {
+        activeChat = targetData
+            .map((json) => Message.fromJson(json))
+            .toList()
+            .reversed
+            .toList();
+      }
+
       _ws.sendReadReceipt(targetId: targetUid);
-      _ws.sendRequestStatus(targetId: targetUid); 
+      _ws.sendRequestStatus(targetId: targetUid);
       await loadInbox();
     } catch (e) {
       debugPrint("Timeline tracking fail: $e");
     }
     notifyListeners();
+  }
+
+  Future<void> queryUsers(String term) async {
+    if (term.trim().isEmpty) {
+      contactSearchResults.clear();
+      notifyListeners();
+      return;
+    }
+    isSearchLoading = true;
+    notifyListeners();
+
+    try {
+      final res = await _api.searchUsers(term);
+      if (res.data == null) {
+        contactSearchResults = [];
+      } else if (res.data is List) {
+        contactSearchResults = res.data;
+      } else if (res.data is Map) {
+        if (res.data['data'] != null && res.data['data'] is List) {
+          contactSearchResults = res.data['data'];
+        } else if (res.data['users'] != null && res.data['users'] is List) {
+          contactSearchResults = res.data['users'];
+        } else {
+          contactSearchResults = [];
+        }
+      }
+    } catch (e) {
+      debugPrint("User query pipeline failure: $e");
+      contactSearchResults.clear();
+    } finally {
+      isSearchLoading = false;
+      notifyListeners();
+    }
   }
 
   void closeChat() {
@@ -77,7 +131,8 @@ class ChatController extends ChangeNotifier {
   void sendTextMessage(String text) {
     if (currentChatUserId == null || text.trim().isEmpty) return;
 
-    final String clientMessageId = "cli_${DateTime.now().millisecondsSinceEpoch}";
+    final String clientMessageId =
+        "cli_${DateTime.now().millisecondsSinceEpoch}";
     final String targetId = currentChatUserId!;
     final String cleanContent = text.trim();
 
@@ -105,7 +160,8 @@ class ChatController extends ChangeNotifier {
 
   void _handleIncomingWebSocketEvent(Map<String, dynamic> data) {
     final String? type = data['type'];
-    final String? senderId = data['sender_id'];
+    final String? senderId =
+        data['sender_id'] ?? data['sender'] ?? data['receiver_id'];
 
     if (type == null) return;
 
@@ -114,13 +170,18 @@ class ChatController extends ChangeNotifier {
 
     switch (type) {
       case 'user_status':
-        final String? eventUserId = data['user_id']?.toString().trim().toLowerCase();
+      case 'status':
+        final String? eventUserId = (data['user_id'] ?? data['id'])
+            ?.toString()
+            .trim()
+            .toLowerCase();
         if (eventUserId == cleanCurrentChat) {
-          isPeerOnline = data['online'] == true;
+          isPeerOnline = data['online'] == true || data['content'] == 'online';
           notifyListeners();
         }
         break;
       case 'chat':
+      case 'message':
         if (cleanSender != null && cleanSender == cleanCurrentChat) {
           activeChat.add(Message.fromJson(data));
           _ws.sendReadReceipt(targetId: currentChatUserId!);

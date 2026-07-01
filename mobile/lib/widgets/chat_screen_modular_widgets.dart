@@ -31,13 +31,24 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   Text(
                     status,
                     style: TextStyle(
-                      color: status == "typing..." ? Colors.green : Colors.black54,
+                      color: status == "typing..."
+                          ? Colors.green
+                          : Colors.black54,
                       fontSize: 12,
-                      fontWeight: status == "typing..." ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: status == "typing..."
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -60,8 +71,8 @@ class ChatBubble extends StatelessWidget {
   final bool isRead;
 
   const ChatBubble({
-    super.key, 
-    required this.message, 
+    super.key,
+    required this.message,
     required this.isMe,
     required this.timestamp,
     required this.isRead,
@@ -69,14 +80,17 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String formattedTime = "${timestamp.hour % 12 == 0 ? 12 : timestamp.hour % 12}:${timestamp.minute.toString().padLeft(2, '0')} ${timestamp.hour >= 12 ? 'PM' : 'AM'}";
+    final String formattedTime =
+        "${timestamp.hour % 12 == 0 ? 12 : timestamp.hour % 12}:${timestamp.minute.toString().padLeft(2, '0')} ${timestamp.hour >= 12 ? 'PM' : 'AM'}";
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.only(top: 10, left: 12, right: 12, bottom: 6),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
         decoration: BoxDecoration(
           color: isMe ? const Color(0xFF1890FF) : const Color(0xFFF0F2F5),
           borderRadius: BorderRadius.only(
@@ -92,7 +106,10 @@ class ChatBubble extends StatelessWidget {
           children: [
             Text(
               message,
-              style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15),
+              style: TextStyle(
+                color: isMe ? Colors.white : Colors.black87,
+                fontSize: 15,
+              ),
             ),
             const SizedBox(height: 4),
             Row(
@@ -124,9 +141,13 @@ class ChatBubble extends StatelessWidget {
 
 class ChatInputArea extends StatefulWidget {
   final Function(String) onSendMessage;
-  final Function(bool)? onTypingChanged; 
+  final Function(bool)? onTypingChanged;
 
-  const ChatInputArea({super.key, required this.onSendMessage, this.onTypingChanged});
+  const ChatInputArea({
+    super.key,
+    required this.onSendMessage,
+    this.onTypingChanged,
+  });
 
   @override
   State<ChatInputArea> createState() => _ChatInputAreaState();
@@ -201,15 +222,20 @@ class _ChatInputAreaState extends State<ChatInputArea> {
               child: TextField(
                 controller: _controller,
                 onChanged: _handleOnChange,
+                style: const TextStyle(color: Colors.black87, fontSize: 15),
                 decoration: InputDecoration(
                   hintText: "Write a message...",
+                  hintStyle: const TextStyle(color: Colors.black38),
                   fillColor: const Color(0xFFF5F5F5),
                   filled: true,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
               ),
             ),

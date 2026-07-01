@@ -1,4 +1,4 @@
-name: mob
+name: mobile
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -47,6 +47,7 @@ dependencies:
   flutter_chat_ui: ^2.11.1
   flutter_chat_types: ^3.6.2
   flutter_secure_storage: ^10.3.1
+  dio: ^5.10.0
 
 launcher_name:
   default: "Elephant"

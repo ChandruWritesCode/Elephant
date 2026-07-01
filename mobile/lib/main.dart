@@ -28,7 +28,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Elephant',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: const Color(0xFF0052CC),
+        scaffoldBackgroundColor: const Color(0xFFFAFBFC),
+      ),
       home: const SessionGateway(),
     );
   }
@@ -42,33 +46,55 @@ class SessionGateway extends StatefulWidget {
 }
 
 class _SessionGatewayState extends State<SessionGateway> {
-  late Future<String?> _loginCheck;
+  bool _hasCheckedAutoLogin = false;
+  String? _lastInitializedToken;
 
   @override
   void initState() {
     super.initState();
-    _loginCheck = context.read<AuthState>().checkAutoLogin();
+    _performInitialAutoLoginCheck();
+  }
+
+  void _performInitialAutoLoginCheck() async {
+    final auth = context.read<AuthState>();
+    final token = await auth.checkAutoLogin();
+
+    if (token != null && mounted) {
+      _lastInitializedToken = token;
+      context.read<ChatController>().initSession(token);
+    }
+
+    if (mounted) {
+      setState(() {
+        _hasCheckedAutoLogin = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: _loginCheck,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        
-        if (snapshot.hasData && snapshot.data != null) {
-          final token = snapshot.data!;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.read<ChatController>().initSession(token);
-          });
-          return const HomePage();
-        }
-        
-        return const LoginPage();
-      },
-    );
+    if (!_hasCheckedAutoLogin) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF0052CC)),
+        ),
+      );
+    }
+
+    final authState = context.watch<AuthState>();
+
+    if (authState.token != null && authState.token != _lastInitializedToken) {
+      _lastInitializedToken = authState.token;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ChatController>().initSession(authState.token!);
+      });
+    }
+
+    if (authState.token != null) {
+      return const HomePage();
+    }
+
+    return const LoginPage();
   }
 }

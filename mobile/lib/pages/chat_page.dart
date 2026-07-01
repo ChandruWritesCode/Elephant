@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:mob/widgets/chat_screen_modular_widgets.dart';
-import 'package:mob/controllers/chat.dart';
+import 'package:mobile/widgets/chat_screen_modular_widgets.dart';
+import 'package:mobile/controllers/chat.dart';
 
 class ChatPage extends StatefulWidget {
   final String chatUserId;
@@ -54,14 +54,20 @@ class _ChatPageState extends State<ChatPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Scaffold(
+      backgroundColor: Colors.white,
       extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: GlassAppBar(
         name: widget.displayName,
-        status: _getPresenceStatusText(chatState), 
+        status: _getPresenceStatusText(chatState),
       ),
       body: chatState.activeChat.isEmpty
-          ? const Center(child: Text("No messages yet", style: TextStyle(color: Colors.grey)))
+          ? const Center(
+              child: Text(
+                "No messages yet",
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+            )
           : ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.only(
@@ -73,11 +79,15 @@ class _ChatPageState extends State<ChatPage> {
               itemCount: chatState.activeChat.length,
               itemBuilder: (context, index) {
                 final msg = chatState.activeChat[index];
-                
+
                 final String cleanSenderId = msg.senderId.trim().toLowerCase();
-                final String cleanPeerId = widget.chatUserId.trim().toLowerCase();
-                
-                final bool isMe = cleanSenderId == 'me' || (cleanSenderId.isNotEmpty && cleanSenderId != cleanPeerId);
+                final String cleanPeerId = widget.chatUserId
+                    .trim()
+                    .toLowerCase();
+
+                final bool isMe =
+                    cleanSenderId == 'me' ||
+                    (cleanSenderId.isNotEmpty && cleanSenderId != cleanPeerId);
 
                 return ChatBubble(
                   message: msg.content,
@@ -89,7 +99,8 @@ class _ChatPageState extends State<ChatPage> {
             ),
       bottomNavigationBar: ChatInputArea(
         onSendMessage: _sendMessage,
-        onTypingChanged: (isTyping) => context.read<ChatController>().sendTypingNotification(isTyping),
+        onTypingChanged: (isTyping) =>
+            context.read<ChatController>().sendTypingNotification(isTyping),
       ),
     );
   }

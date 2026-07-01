@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/constants.dart';
 
@@ -15,8 +16,10 @@ class WebSocketService {
       final wsUrl = Uri.parse("${Env.wsBaseUrl}?token=$token");
       _channel = WebSocketChannel.connect(wsUrl);
       _isConnected = true;
+      debugPrint("WebSocket Pipeline Connected straight to: ${Env.wsBaseUrl}");
     } catch (e) {
       _isConnected = false;
+      debugPrint("WebSocket connection failure: $e");
     }
   }
 
@@ -25,7 +28,11 @@ class WebSocketService {
     _channel?.sink.add(jsonEncode(payload));
   }
 
-  void sendChat({required String messageId, required String targetId, required String content}) {
+  void sendChat({
+    required String messageId,
+    required String targetId,
+    required String content,
+  }) {
     emit({
       "type": "chat",
       "message_id": messageId,
@@ -43,21 +50,17 @@ class WebSocketService {
   }
 
   void sendReadReceipt({required String targetId}) {
-    emit({
-      "type": "read_receipt",
-      "receiver_id": targetId,
-    });
+    emit({"type": "read_receipt", "receiver_id": targetId});
   }
- 
+
   void sendRequestStatus({required String targetId}) {
-    emit({
-      "type": "request_status",
-      "receiver_id": targetId,
-    });
+    emit({"type": "request_status", "receiver_id": targetId});
   }
 
   void disconnect() {
     _channel?.sink.close();
     _isConnected = false;
+    _channel = null;
+    debugPrint("WebSocket Pipeline Terminated Cleanly.");
   }
 }
