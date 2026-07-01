@@ -1,6 +1,6 @@
-import 'package:mob/pages/profile_setup_page.dart';
-import 'package:mob/providers/basic_providers.dart';
-import 'package:mob/providers/timer_provider.dart';
+import 'package:mobile/pages/profile_setup_page.dart';
+import 'package:mobile/providers/basic_providers.dart';
+import 'package:mobile/providers/timer_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:pinput/pinput.dart';

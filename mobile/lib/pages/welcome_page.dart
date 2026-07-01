@@ -1,5 +1,5 @@
-import 'package:mob/pages/phone_number_page.dart';
-import 'package:mob/players/intro_animation.dart';
+import 'package:mobile/pages/phone_number_page.dart';
+import 'package:mobile/players/intro_animation.dart';
 import 'package:flutter/material.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -39,9 +39,7 @@ class WelcomePage extends StatelessWidget {
                 ),
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => PhoneNumberPage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => PhoneNumberPage()),
                   );
                 },
                 child: Text('Get Started'),

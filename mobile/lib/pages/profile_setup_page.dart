@@ -1,6 +1,6 @@
-import 'package:mob/pages/home_page.dart';
-import 'package:mob/providers/basic_providers.dart';
-import 'package:mob/providers/image_picker_provider.dart';
+import 'package:mobile/pages/home_page.dart';
+import 'package:mobile/providers/basic_providers.dart';
+import 'package:mobile/providers/image_picker_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

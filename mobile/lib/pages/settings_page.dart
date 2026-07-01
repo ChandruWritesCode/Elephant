@@ -1,13 +1,13 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:mob/pages/settings%20pages/accounts.dart';
-import 'package:mob/pages/settings%20pages/appearance.dart';
-import 'package:mob/pages/settings%20pages/chats_media.dart';
-import 'package:mob/pages/settings%20pages/help_about.dart';
-import 'package:mob/pages/settings%20pages/notifications_settings.dart';
-import 'package:mob/pages/settings%20pages/privacy_security.dart';
-import 'package:mob/providers/basic_providers.dart';
+import 'package:mobile/pages/settings%20pages/accounts.dart';
+import 'package:mobile/pages/settings%20pages/appearance.dart';
+import 'package:mobile/pages/settings%20pages/chats_media.dart';
+import 'package:mobile/pages/settings%20pages/help_about.dart';
+import 'package:mobile/pages/settings%20pages/notifications_settings.dart';
+import 'package:mobile/pages/settings%20pages/privacy_security.dart';
+import 'package:mobile/providers/basic_providers.dart';
 import 'package:provider/provider.dart';
 
 class SettingsPage extends StatelessWidget {
