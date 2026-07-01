@@ -1,4 +1,4 @@
-package `in`.commandlinecoding.elephant.mob
+package `in`.commandlinecoding.elephant
 
 import io.flutter.embedding.android.FlutterActivity
 
