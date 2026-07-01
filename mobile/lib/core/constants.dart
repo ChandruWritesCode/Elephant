@@ -1,10 +1,9 @@
 // lib/core/constants.dart
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Env {
   static const String defaultHost = "elephant.commandlinecoding.in";
-  static const String defaultPort = "80";
+  static const String defaultPort = "443";
 
   static String host = defaultHost;
   static String port = defaultPort;
