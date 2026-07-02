@@ -1,4 +1,4 @@
-# Elephant Messenger API Contracts - v0.1.0
+# Elephant Messenger API Contracts
 
 ## Global Requirements & Configuration
 
@@ -8,6 +8,23 @@
 - **Timestamp Format:** `ISO8601 UTC`
 ---
 
+## API Overview
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | [/api/health](#health-endpoint)| Health check (server + database status) |
+| POST | [/api/auth/register](#1-register-user) | Register a new user |
+| POST | [/api/auth/login](#2-login-user) | Log in and receive a token pair |
+| POST | [/api/auth/refresh](#3-refresh) | Exchange a refresh token for a new token pair |
+| GET | [/api/users/me](#1-user-me) | Get the authenticated user's profile |
+| GET | [/api/users/:id](#2-search-user-by-id) | Search users by username or display name |
+| GET | [/api/users/search?q=&page=&limit=](#3-search-user-by-username-and-display-name) | Get a public user profile |
+| GET | [/ws](#websocket-endpoints) | WebSocket upgrade endpoint (JWT required) |
+| POST | [/api/messages](#1-send-message) | Send a message (REST fallback) |
+| GET | [/api/messages?with=&before=&limit=](#2-message-history) | Paginated message history |
+
+All endpoints except `/api/health`, `/api/auth/register`, and `/api/auth/login` require a `Bearer` token in the `Authorization` header.
+
 ## Health Endpoint
 
 Evaluates the operational status of the server application and its upstream resource dependencies (such as the PostgreSQL database pool).
@@ -15,7 +32,7 @@ Evaluates the operational status of the server application and its upstream reso
 - **URL:** `/api/health`
 - **Method:** `GET`
 - **Authentication Required:** `NO`
-- **curl:** `curl -X GET http://HOST:PORT/api/health \ -s | jq .`
+- **curl:** `curl -X GET http://HOST:PORT/api/health -s | jq .`
 
 ### Expected Responses
 
@@ -56,7 +73,7 @@ Returned when the server has encountered an unexpected error (error description 
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `NO`
-- **curl:** `curl -X POST http://HOST:PORT/api/auth/register \ -H "Content-Type: application/json" \ -d '{ "username": "<username>", "display_name": "Full Name", "password": "<password>" }' \ -s | jq .`
+- **curl:** `curl -X POST http://HOST:PORT/api/auth/register  -H "Content-Type: application/json" -d '{ "username": "<username>", "display_name": "Full Name", "password": "<password>" }' -s | jq .`
 
 #### Request Body
 
@@ -113,7 +130,7 @@ Returned when the json does not contain valid payload (error description provide
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `NO`
-- **curl:** `curl -X POST http://HOST:PORT/api/auth/login \ -H "Content-Type: application/json" \ -d '{ "username": "<username>", "password": "<password>" }' \ -s | jq .`
+- **curl:** `curl -X POST http://HOST:PORT/api/auth/login -H "Content-Type: application/json" -d '{ "username": "<username>", "password": "<password>" }' -s | jq .`
 
 #### Request Body
 
@@ -176,7 +193,7 @@ Returned when json payload structure is incorrect
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `NO`
-- **curl:** `curl -X POST http://HOST:PORT/api/auth/refresh \ -H "Content-Type: application/json" \ -d '{ "refresh_token": "<refresh_token>" }' \ -s | jq .`
+- **curl:** `curl -X POST http://HOST:PORT/api/auth/refresh -H "Content-Type: application/json -d '{ "refresh_token": "<refresh_token>" }' -s | jq .`
 
 #### Request Body
 
@@ -223,7 +240,7 @@ Get user data
 - **Method:** `GET`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
-- **curl:** `curl -X GET "http://HOST:PORT/api/users/me" \ -H "Authorization: Bearer <access_token>"`
+- **curl:** `curl -X GET "http://HOST:PORT/api/users/me" -H "Authorization: Bearer <access_token>"`
 
 #### Expected Responses
 
@@ -263,7 +280,7 @@ Get user data
 - **Method:** `GET`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
-- **curl:** `curl -X GET "http://HOST:PORT/api/users/{id}" \ -H "Authorization: Bearer <access_token>"`
+- **curl:** `curl -X GET "http://HOST:PORT/api/users/{id}" -H "Authorization: Bearer <access_token>"`
 
 #### Expected Responses
 
@@ -314,7 +331,7 @@ Get user data
 - **Method:** `GET`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
-- **curl:** `curl -X GET "http://HOST:PORT/api/users/search?q={name}&page={page}&limit={limit}" \ -H "Authorization: Bearer <access_token>"`
+- **curl:** `curl -X GET "http://HOST:PORT/api/users/search?q={name}&page={page}&limit={limit}" -H "Authorization: Bearer <access_token>"`
 
 #### Expected Responses
 
@@ -409,7 +426,7 @@ WebSocket error: Unexpected server response: 404
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
-- **curl:** `curl -X POST "http://HOST:PORT/api/messages/" \ -H "Content-Type: application/json" \ -H "Authorization: Bearer <access_token>" \ -d '{ "receiver_id": "<receiver_id>", "content": "<content>" }'`
+- **curl:** `curl -X POST "http://HOST:PORT/api/messages/" -H "Content-Type: application/json" -H "Authorization: Bearer <access_token>" -d '{ "receiver_id": "<receiver_id>", "content": "<content>" }'`
 
 #### Request Body
 
@@ -458,7 +475,7 @@ To get message history with specific user using user id
 - **Method:** `GET`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
-- **curl:** `curl -X GET "http://HOST:PORT/api/messages/?with={receiver_id}&before={time}&limit={limit}" \ -H "Authorization: Bearer <access_token>"`
+- **curl:** `curl -X GET "http://HOST:PORT/api/messages/?with={receiver_id}&before={time}&limit={limit}" -H "Authorization: Bearer <access_token>"`
 
 #### Expected Response
 

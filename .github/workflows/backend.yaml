@@ -2,9 +2,9 @@ name: Go Integration & Test Suite
 
 on:
   push:
-    branches: [ main, v0.1.0 ]
+    branches: [ main, v0.1.5, 0.2.0 ]
   pull_request:
-    branches: [ main, v0.1.0 ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -63,14 +63,16 @@ jobs:
       run: |
         cd server
         sudo apt-get update && sudo apt-get install -y postgresql-client
-        PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -h localhost -p "${{ vars.POSTGRES_PORT }}" -U "${{ vars.POSTGRES_USER }}" -d "${{ vars.POSTGRES_DB }}" \
+        PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -h "${{ vars.POSTGRES_HOST }}" -p "${{ vars.POSTGRES_PORT }}" -U "${{ vars.POSTGRES_USER }}" -d "${{ vars.POSTGRES_DB }}" \
           -f migrations/001_create_users_up.sql \
           -f migrations/002_create_refresh_tokens_up.sql \
           -f migrations/003_add_search_indexes_up.sql \
-          -f migrations/004_create_message_up.sql
+          -f migrations/004_create_message_up.sql \
+          -f migrations/005_create_message_status_up.sql\
+          -f migrations/006_create_groups_table_up.sql
         go run main.go &
         for i in $(seq 1 10); do
-          curl -sf http://localhost:${{ vars.PORT }}/api/health && break
+          curl -sf http://${{ vars.POSTGRES_HOST }}:${{ vars.PORT }}/api/health && break
           echo "Waiting for server... attempt $i"
           sleep 2
         done
