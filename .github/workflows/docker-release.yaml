@@ -3,7 +3,7 @@ name: Build and Publish to Docker Hub
 on:
   push:
     tags:
-    - '*v'
+    - 'v*'
 
 jobs:
   docker:
