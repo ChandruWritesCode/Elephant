@@ -11,7 +11,7 @@ env:
 
 jobs:
   apk:
-    name: Flutter APK → GitHub Release
+    name: Flutter APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '25'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
