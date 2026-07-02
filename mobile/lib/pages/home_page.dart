@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/services/auth.dart';
 import 'package:mobile/widgets/custom_cards.dart';
 import 'package:provider/provider.dart';
 import 'new_chat_page.dart';
@@ -21,8 +22,17 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _isSearchOpen = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ChatController>().loadInbox();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final chatController = context.read<ChatController>();
+      final authService = AuthService();
+      final token = await authService.getToken();
+
+      if (token != null) {
+        // Initialize WebSocket session immediately on app load
+        await chatController.initSession(token);
+        // Load the initial inbox
+        await chatController.loadInbox();
+      }
     });
   }
 

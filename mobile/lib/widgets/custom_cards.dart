@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/conversation.dart';
 import '../pages/chat_page.dart';
+import '../controllers/chat.dart';
 
 class CustomChatCard extends StatelessWidget {
   final Conversation conversation;
@@ -13,16 +15,21 @@ class CustomChatCard extends StatelessWidget {
         "${conversation.lastMessageTime.hour.toString().padLeft(2, '0')}:${conversation.lastMessageTime.minute.toString().padLeft(2, '0')}";
 
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatPage(
-              chatUserId: conversation.chatUserId,
-              displayName: conversation.displayName,
+      onTap: () async {
+        final controller = context.read<ChatController>();
+        await controller.openChat(conversation.chatUserId);
+
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatPage(
+                chatUserId: conversation.chatUserId,
+                displayName: conversation.displayName,
+              ),
             ),
-          ),
-        );
+          );
+        }
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -68,8 +75,8 @@ class CustomChatCard extends StatelessWidget {
                 if (conversation.unreadCount > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                      horizontal: 7,
+                      vertical: 3,
                     ),
                     decoration: const BoxDecoration(
                       color: Color(0xFF1890FF),
