@@ -12,5 +12,6 @@ type Group struct {
 type GroupMember struct {
 	GroupID  string    `json:"group_id"`
 	UserID   string    `json:"user_id"`
+	Role     string    `json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
 }
