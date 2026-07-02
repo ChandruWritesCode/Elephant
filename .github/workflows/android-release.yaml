@@ -42,7 +42,7 @@ jobs:
 
       - name: Build release APK
         working-directory: mobile
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
       - name: Rename APK with version tag
         run: |
