@@ -12,5 +12,14 @@ type Group struct {
 type GroupMember struct {
 	GroupID  string    `json:"group_id"`
 	UserID   string    `json:"user_id"`
+	Role     string    `json:"role"`
 	JoinedAt time.Time `json:"joined_at"`
+}
+
+type GroupMemberDetail struct {
+	UserID      string    `json:"user_id"`
+	Username    string    `json:"username"`
+	DisplayName string    `json:"display_name"`
+	Role        string    `json:"role"`
+	JoinedAt    time.Time `json:"joined_at"`
 }
