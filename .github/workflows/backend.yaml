@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -11,9 +14,9 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ vars.POSTGRES_DB }}        
+          POSTGRES_USER: ${{ vars.POSTGRES_USER || 'elephant_admin' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'local_test_password' }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB || 'elephant_messenger' }}
         ports:
           - 42359:5432
         options: >-
@@ -45,27 +48,23 @@ jobs:
         install-go: false
         working-directory: "server"
 
-    - name: create .env
-      run: |
-        cp .env.example .env
-
     - name: Execute Package Test Automation Suite      
       env:
-        HOST: ${{ vars.HOST }}
-        PORT: ${{ vars.PORT }}
-        POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        POSTGRES_DB: ${{ vars.POSTGRES_DB }}
-        POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
-        POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        ARGON_MEMORY: ${{ vars.ARGON_MEMORY }}
-        ARGON_ITERATIONS: ${{ vars.ARGON_ITERATIONS }}
-        ARGON_PARALLELISM: ${{ vars.ARGON_PARALLELISM }}
+        HOST: ${{ vars.HOST || '127.0.0.1' }}
+        PORT: ${{ vars.PORT || '8080'}}
+        POSTGRES_USER: ${{ vars.POSTGRES_USER || 'elephant_admin' }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'local_test_password' }}
+        POSTGRES_DB: ${{ vars.POSTGRES_DB || 'elephant_messenger' }}
+        POSTGRES_PORT: ${{ vars.POSTGRES_PORT || '42359' }}
+        POSTGRES_HOST: ${{ vars.POSTGRES_HOST || 'localhost' }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET || 'testing_only_secret_key_string_32_chars' }}
+        ARGON_MEMORY: ${{ vars.ARGON_MEMORY || '65536' }}
+        ARGON_ITERATIONS: ${{ vars.ARGON_ITERATIONS || '1' }}
+        ARGON_PARALLELISM: ${{ vars.ARGON_PARALLELISM || '2'}}
       run: |
         cd server
         sudo apt-get update && sudo apt-get install -y postgresql-client
-        PGPASSWORD="${{ secrets.POSTGRES_PASSWORD }}" psql -h "${{ vars.POSTGRES_HOST }}" -p "${{ vars.POSTGRES_PORT }}" -U "${{ vars.POSTGRES_USER }}" -d "${{ vars.POSTGRES_DB }}" \
+        PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$.POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$vars.POSTGRES_DB" \
           -f migrations/001_create_users_up.sql \
           -f migrations/002_create_refresh_tokens_up.sql \
           -f migrations/003_add_search_indexes_up.sql \
@@ -74,7 +73,7 @@ jobs:
           -f migrations/006_create_groups_table_up.sql
         go run main.go &
         for i in $(seq 1 10); do
-          curl -sf http://${{ vars.HOST }}:${{ vars.PORT }}/api/health && break
+          curl -sf http://$.HOST:$.PORT/api/health && break
           echo "Waiting for server... attempt $i"
           sleep 2
         done
