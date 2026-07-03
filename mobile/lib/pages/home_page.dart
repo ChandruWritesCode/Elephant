@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/pages/settings_page.dart';
+import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/services/auth.dart';
 import 'package:mobile/widgets/custom_cards.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +19,9 @@ class _HomePageState extends State<HomePage> {
   late bool _isSearchOpen;
   int _page = 1;
   final _searchController = TextEditingController();
+  final Set<String> _selectedChatIds = {};
+
+  bool get _isSelectionMode => _selectedChatIds.isNotEmpty;
 
   @override
   void initState() {
@@ -26,7 +31,6 @@ class _HomePageState extends State<HomePage> {
       final chatController = context.read<ChatController>();
       final authService = AuthService();
       final token = await authService.getToken();
-
       if (token != null) {
         // Initialize WebSocket session immediately on app load
         await chatController.initSession(token);
@@ -101,8 +105,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget buildGlassNavigationBar() {
+  Widget buildGlassNavigationBar({Key? key}) {
     return SafeArea(
+      key: key,
       child: Padding(
         padding: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
         child: ClipRRect(
@@ -204,15 +209,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  final Set<String> _selectedChatIds = {};
-
-  bool get _isSelectionMode => _selectedChatIds.isNotEmpty;
-  
   Widget buildHomeTab(ChatController chatState) {
-    
     return RefreshIndicator(
       color: const Color(0xFF1890FF),
-      onRefresh: () => chatState.loadInbox(),
+      onRefresh: _isSelectionMode ? () async {} : () => chatState.loadInbox(),
       child: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -230,84 +230,167 @@ class _HomePageState extends State<HomePage> {
                 child: Container(color: Colors.white.withValues(alpha: 0.4)),
               ),
             ),
-            leading: const Padding(
-              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 10.0),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0xFFD6E4FF),
-                child: Icon(Icons.person, color: Color(0xFF1890FF), size: 18),
-              ),
-            ),
+            leading: _isSelectionMode
+                ? null
+                : const Padding(
+                    padding: EdgeInsets.only(
+                      left: 16.0,
+                      top: 10.0,
+                      bottom: 10.0,
+                    ),
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Color(0xFFD6E4FF),
+                      child: Icon(
+                        Icons.person,
+                        color: Color(0xFF1890FF),
+                        size: 18,
+                      ),
+                    ),
+                  ),
             leadingWidth: 52,
             title: AnimatedSwitcher(
-              switchInCurve: Curves.decelerate,
-              switchOutCurve: Curves.decelerate,
               duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) {
-                final tween = Tween<Offset>(
-                  begin: const Offset(0.5, 0.0),
-                  end: Offset.zero,
-                );
-                final offsetAnimation = tween.animate(animation);
-                return SlideTransition(position: offsetAnimation, child: child);
-              },
-              child: _isSearchOpen
-                  ? SizedBox(
-                      height: 40,
-                      child: TextField(
-                        controller: _searchController,
-                        key: const ValueKey('search'),
-                        autofocus: true,
-                        style: const TextStyle(color: Colors.black87),
-                        decoration: InputDecoration(
-                          hintText: 'Search conversations...',
-                          hintStyle: const TextStyle(color: Colors.black38),
-                          filled: true,
-                          fillColor: Colors.black.withValues(alpha: 0.05),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 0,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    )
-                  : const Text(
-                      'Elephant',
-                      style: TextStyle(
-                        letterSpacing: 0.5,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      key: ValueKey('title'),
+              child: _isSelectionMode
+                  ? Text('${_selectedChatIds.length} Selected')
+                  : AnimatedSwitcher(
+                      switchInCurve: Curves.decelerate,
+                      switchOutCurve: Curves.decelerate,
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, animation) {
+                        final tween = Tween<Offset>(
+                          begin: const Offset(0.5, 0.0),
+                          end: Offset.zero,
+                        );
+                        final offsetAnimation = tween.animate(animation);
+                        return SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
+                        );
+                      },
+                      child: _isSearchOpen
+                          ? SizedBox(
+                              height: 40,
+                              child: TextField(
+                                controller: _searchController,
+                                key: const ValueKey('search'),
+                                autofocus: true,
+                                style: const TextStyle(color: Colors.black87),
+                                decoration: InputDecoration(
+                                  hintText: 'Search conversations...',
+                                  hintStyle: const TextStyle(
+                                    color: Colors.black38,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.black.withValues(
+                                    alpha: 0.05,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 0,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              'Elephant',
+                              style: TextStyle(
+                                letterSpacing: 0.5,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                              key: ValueKey('title'),
+                            ),
                     ),
             ),
             actions: [
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isSearchOpen = !_isSearchOpen;
-                    if (!_isSearchOpen) _searchController.clear();
-                  });
-                },
-                icon: Icon(
-                  _isSearchOpen ? Icons.close : Icons.search,
-                  color: Colors.black87,
-                ),
-              ),
+              _isSelectionMode
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _isSearchOpen = !_isSearchOpen;
+                          if (!_isSearchOpen) _searchController.clear();
+                        });
+                      },
+                      icon: Icon(
+                        _isSearchOpen ? Icons.close : Icons.search,
+                        color: Colors.black87,
+                      ),
+                    ),
               if (!_isSearchOpen)
-                IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.black87),
-                  onPressed: () {},
-                ),
+                !_isSelectionMode
+                    ? PopupMenuButton<String>(
+                        onSelected: (String value) {
+                          switch (value) {
+                            case 'settings':
+                              context
+                                  .read<BasicProviders>()
+                                  .initNotificationsSwitch();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsPage(),
+                                ),
+                              );
+                              break;
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'starred',
+                            child: Text('Starred messages'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'read all',
+                            child: Text('Read all'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'settings',
+                            child: Text('Settings'),
+                          ),
+                        ],
+                      )
+                    : PopupMenuButton<String>(
+                        onSelected: (String value) {
+                          switch (value) {
+                            case 'Select all':
+                              setState(() {
+                                for (final thread in chatState.inbox) {
+                                  _selectedChatIds.add(thread.chatUserId);
+                                }
+                              });
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'Select all',
+                            child: Text("Select all"),
+                          ),
+                          const PopupMenuItem(
+                            value: 'Favorite',
+                            child: Text("Favorite"),
+                          ),
+                          const PopupMenuItem(
+                            value: 'Read',
+                            child: Text("Read"),
+                          ),
+                          const PopupMenuItem(
+                            value: 'Delete',
+                            child: Text("Delete"),
+                          ),
+                        ],
+                      ),
               const SizedBox(width: 4),
             ],
           ),
-
           chatState.inbox.isEmpty
               ? const SliverFillRemaining(
                   hasScrollBody: false,
@@ -322,8 +405,31 @@ class _HomePageState extends State<HomePage> {
                   itemCount: chatState.inbox.length,
                   itemBuilder: (context, index) {
                     final thread = chatState.inbox[index];
-                    final bool isSelected = _selectedChatIds.contains(thread.chatUserId);
-                    return CustomChatCard(conversation: thread, isSelected: isSelected);
+                    final bool isSelected = _selectedChatIds.contains(
+                      thread.chatUserId,
+                    );
+
+                    return CustomChatCard(
+                      isSelectionMode: _isSelectionMode,
+                      conversation: thread,
+                      isSelected: isSelected,
+                      onLongPress: () {
+                        if (!_isSearchOpen) {
+                          setState(() {
+                            _selectedChatIds.add(thread.chatUserId);
+                          });
+                        }
+                      },
+                      onTapInSelection: () {
+                        setState(() {
+                          if (_selectedChatIds.contains(thread.chatUserId)) {
+                            _selectedChatIds.remove(thread.chatUserId);
+                          } else {
+                            _selectedChatIds.add(thread.chatUserId);
+                          }
+                        });
+                      },
+                    );
                   },
                 ),
           SliverList(
@@ -333,49 +439,72 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     final chatState = context.watch<ChatController>();
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
-      extendBody: true,
-      body: IndexedStack(
-        index: _page,
-        children: [
-          const Center(
-            child: Text(
-              "No stories available",
-              style: TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-          ),
-          buildHomeTab(chatState),
-          const Center(
-            child: Text(
-              "No recent calls",
-              style: TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: _page == 1
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 75),
-              child: FloatingActionButton(
-                heroTag: "fab_pen",
-                backgroundColor: const Color(0xFF1890FF),
-                child: const Icon(Icons.edit, color: Colors.white),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const NewChatPage()),
-                  );
-                },
+    return PopScope(
+      canPop: _selectedChatIds.isEmpty,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        setState(() {
+          _selectedChatIds.clear();
+        });
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        extendBodyBehindAppBar: true,
+        extendBody: true,
+        body: IndexedStack(
+          index: _page,
+          children: [
+            const Center(
+              child: Text(
+                "No stories available",
+                style: TextStyle(color: Colors.black54, fontSize: 16),
               ),
-            )
-          : null,
-      bottomNavigationBar: buildGlassNavigationBar(),
+            ),
+            buildHomeTab(chatState),
+            const Center(
+              child: Text(
+                "No recent calls",
+                style: TextStyle(color: Colors.black54, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton: _page == 1
+            ? Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: FloatingActionButton(
+                  heroTag: "fab_pen",
+                  backgroundColor: const Color(0xFF1890FF),
+                  child: const Icon(Icons.edit, color: Colors.white),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NewChatPage()),
+                    );
+                  },
+                ),
+              )
+            : null,
+        bottomNavigationBar: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 100),
+          transitionBuilder: (child, animation) {
+            final tween = Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            );
+            final offsetAnimation = tween.animate(animation);
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
+          child: _isSelectionMode
+              ? const SizedBox.shrink(key: ValueKey('nav_hidden'))
+              : buildGlassNavigationBar(key: const ValueKey('nav_visible')),
+        ),
+      ),
     );
   }
 }

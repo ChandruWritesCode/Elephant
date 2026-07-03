@@ -7,10 +7,18 @@ import '../controllers/chat.dart';
 class CustomChatCard extends StatelessWidget {
   final Conversation conversation;
   final bool isSelected;
-  final Function? onLongPress;
-  final Function? onTap;
+  final bool isSelectionMode;
+  final GestureLongPressCallback? onLongPress;
+  final Function onTapInSelection;
 
-  const CustomChatCard({super.key, required this.conversation, required this.isSelected, this.onLongPress, this.onTap});
+  const CustomChatCard({
+    super.key,
+    required this.conversation,
+    required this.isSelected,
+    this.onLongPress,
+    required this.onTapInSelection,
+    required this.isSelectionMode,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,34 +26,55 @@ class CustomChatCard extends StatelessWidget {
         "${conversation.lastMessageTime.hour.toString().padLeft(2, '0')}:${conversation.lastMessageTime.minute.toString().padLeft(2, '0')}";
 
     return InkWell(
-      onLongPress: () {
-        
-      },
+      onLongPress: onLongPress,
 
       onTap: () async {
-        final controller = context.read<ChatController>();
-        await controller.openChat(conversation.chatUserId);
+        if (isSelectionMode) {
+          onTapInSelection();
+        } else {
+          final controller = context.read<ChatController>();
+          await controller.openChat(conversation.chatUserId);
 
-        if (context.mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatPage(
-                chatUserId: conversation.chatUserId,
-                displayName: conversation.displayName,
+          if (context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatPage(
+                  chatUserId: conversation.chatUserId,
+                  displayName: conversation.displayName,
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
       },
-      child: Padding(
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        color: isSelected? Colors.blue.withAlpha(20) : null,
         child: Row(
           children: [
-            const CircleAvatar(
-              radius: 24,
-              backgroundColor: Color(0xFFD6E4FF),
-              child: Icon(Icons.person, color: Color(0xFF1890FF)),
+            SizedBox(
+              width: 50,
+              height: 50,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  const CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Color(0xFFD6E4FF),
+                    child: Icon(Icons.person, color: Color(0xFF1890FF)),
+                  ),
+                  isSelected
+                      ? Align(
+                          alignment: AlignmentGeometry.bottomRight,
+                          child: const Icon(
+                            Icons.check_circle,
+                            color: Colors.blue,
+                          ),
+                        )
+                      : SizedBox.shrink(),
+                ],
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(

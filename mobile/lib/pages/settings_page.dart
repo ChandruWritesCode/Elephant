@@ -108,12 +108,14 @@ class SettingsPage extends StatelessWidget {
                       icon: Icons.notifications,
                       settingName: 'Notifications',
                       whereTo: NotificationsSettingsPage(),
-                      trailing: Switch(
-                        value: context
-                            .watch<BasicProviders>()
-                            .notificationsSwitch,
-                        onChanged: (value) {
-                          context.read<BasicProviders>().toggleNotifications();
+                      trailing: Consumer<BasicProviders>(
+                        builder: (context, basicProvider, child) {
+                          return Switch(
+                            value: basicProvider.notificationsSwitch,
+                            onChanged: (value) {
+                              basicProvider.toggleNotifications();
+                            },
+                          );
                         },
                       ),
                     ),

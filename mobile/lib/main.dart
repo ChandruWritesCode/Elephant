@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/providers/basic_providers.dart';
 import 'package:provider/provider.dart';
 import 'core/constants.dart';
 import 'controllers/auth.dart';
@@ -12,6 +13,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => BasicProviders()),
         ChangeNotifierProvider(create: (_) => AuthState()),
         ChangeNotifierProvider(create: (_) => ChatController()),
       ],
