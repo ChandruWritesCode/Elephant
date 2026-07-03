@@ -1,37 +1,14 @@
+[![GitHub Release](https://img.shields.io/github/v/release/commandlinecoding/elephant?style=flat-square&color=blue)](https://github.com/commandlinecoding/elephant/releases)
+[![Docker Pulls (Docker Hub)](https://img.shields.io/docker/pulls/commandlinecoding/elephant?style=flat-square&logo=docker)](https://hub.docker.com/r/commandlinecoding/elephant)
+[![Go Integration & Test Suite](https://github.com/commandlinecoding/elephant/actions/workflows/backend.yaml/badge.svg)](https://github.com/commandlinecoding/elephant/actions)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL-green.svg?style=flat-square)](LICENSE)
+
+---
+
 # Elephant
 Elephant – a privacy-first, open-source messaging application made with Go and Flutter. Elephant supports secure authentication, user discovery, and real-time chat over WebSocket, with all communication TLS-protected between client and server.
 
-## Quick Start (Docker/Podman)
-
-The fastest way to run Elephant is by pulling the published image — no Go toolchain required.
-
-```bash
-# Log in to GitHub Container Registry 
-docker login ghcr.io -u YOUR_GITHUB_USERNAME
-# or: podman login ghcr.io -u YOUR_GITHUB_USERNAME
- 
-# Clone the repo for the compose file and .env template
-git clone https://github.com/commandlinecoding/elephant.git
-cd elephant
- 
-# Copy and fill in environment variables
-cp .env.example .env
- 
-# Start the stack
-docker compose up
-# or: podman-compose up
-```
-Once running, verify the server is healthy:
- 
-```bash
-curl http://localhost:8080/api/health
-```
- 
-You should see:
- 
-```json
-{"success":true,"data":{"postgres":"up","timestamp":"..."}}
-```
+<img src="./mobile/assets/launcher/elephant.png" width="200" height="200" alt="App Screenshot">
 
  ## Tech Stack
  
@@ -42,12 +19,75 @@ You should see:
 | Database | PostgreSQL 16 |
 | CI/CD | GitHub Actions, Docker Compose, GHCR |
 
+## GitHub Releases (Mobile Apps)
+
+If you just want to run the client application or get a production-ready backend binary without setting up a build environment, head straight over to our **[GitHub Releases Page](https://github.com/commandlinecoding/elephant/releases)**.
+
+Here you will find:
+* **Client Installers:** Pre-built application packages (`.apk` for Android ) ready for deployment.
+---
+
+## Quick Start (Docker/Podman)
+
+The fastest way to run Elephant is by pulling the published image — no Go toolchain required.
+
+#### Pulling image from Docker Hub
+```bash
+docker run --name elephant-server \
+  -e PORT=8080 \
+  -e POSTGRES_HOST=host.docker.internal \
+  -e POSTGRES_PORT=5432 \
+  -e POSTGRES_USER=your_db_user \
+  -e POSTGRES_PASSWORD=your_db_password \
+  -e POSTGRES_DB=your_db_name \
+  -e JWT_SECRET=a_secure_32_character_secret_key_phrase \
+  -p 8080:8080 \
+  -d commandlinecoding/elephant:latest
+ ```
+
+#### Pulling image from Github GHCR
+```bash
+podman run --name elephant-server \
+  -e PORT=8080 \
+  -e POSTGRES_HOST=host.containers.internal \
+  -e POSTGRES_PORT=5432 \
+  -e POSTGRES_USER=your_db_user \
+  -e POSTGRES_PASSWORD=your_db_password \
+  -e POSTGRES_DB=your_db_name \
+  -e JWT_SECRET=a_secure_32_character_secret_key_phrase \
+  -p 8080:8080 \
+  -d ghcr.io/commandlinecoding/elephant:latest
+```
+
+
+Once running, verify the server is healthy:
+
+```bash
+curl http://HOST:PORT/api/health
+```
+ 
+You should see:
+ 
+```json
+{"success":true,"data":{"postgres":"up","timestamp":"..."}}
+```
+
 ## Local Development Setup
  
 If you're contributing to the backend and want to build from source instead of pulling the published image, use the dev compose override:
- 
+
+
 ```bash
-docker compose -f compose.yaml -f compose.dev.yaml up
+# Clone the repo for the compose file and .env template
+git clone https://github.com/commandlinecoding/elephant.git
+cd elephant
+ 
+# Copy and fill in environment variables
+cp .env.example .env
+ 
+# Start the stack
+docker compose up -d
+# or: podman-compose up -d
 ```
  
 This builds the `server` image from `server/Dockerfile` on every run instead of pulling from GHCR, so your local changes are reflected immediately.
@@ -67,10 +107,20 @@ Make sure PostgreSQL is running and reachable using the values in your `.env` fi
 ```bash
 cd server
 psql "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB" \
-  -f migrations/001_create_users_up.sql \
-  -f migrations/002_create_refresh_tokens_up.sql \
-  -f migrations/003_add_search_indexes_up.sql \
-  -f migrations/004_create_message_up.sql
+for migration in /app/migrations/*_up.sql; do
+    filename=$(basename "$migration")
+    already_applied=$(psql "${DB_URL}" -tAc \
+        "SELECT COUNT(*) FROM schema_migrations WHERE filename = '${filename}'")
+    if [ "$already_applied" = "0" ]; then
+        echo "Applying ${filename}..."
+        psql "${DB_URL}" -f "$migration"
+        psql "${DB_URL}" -c \
+            "INSERT INTO schema_migrations (filename) VALUES ('${filename}')"
+        echo "${filename} applied."
+    else
+        echo "${filename} already applied, skipping."
+    fi
+done
 ```
  
 ### Running the mobile app
@@ -121,12 +171,13 @@ go test -v ./...
 Integration tests under [server/tests/](server/tests/) expect a running server and database. Start the stack first, then run:
  
 ```bash
-HOST=localhost PORT=8080 go test -v ./tests/...
+HOST=$HOST PORT=$PORT go test -v ./tests/...
 ```
 
 ### CI/CD
  
-Tests, `go vet`, and `staticcheck` run automatically on every push and pull request via GitHub Actions (`.github/workflows/`). Docker images are built and published to GHCR via manual `workflow_dispatch` or on tagged pushes.
+Docker images are built and published to both GHCR and Docker Hub automatically on every version tag push.
+Android APKs are built and attached to GitHub Releases automatically on every version tag push.
 
 ## Project Structure
  
@@ -151,7 +202,7 @@ elephant/
 │   ├── models/              # Data models
 │   ├── repository/          # Database access layer
 │   ├── routes/              # Route definitions
-│   ├── services/            # Business logic (auth, users, JWT, WebSocket hub)
+│   ├── services/            # Business logic (auth, users, JWT, WebSocket)
 │   ├── tests/               # Integration tests
 │   └── Dockerfile
 ├── compose.yaml              # Default: pulls published image
@@ -159,6 +210,10 @@ elephant/
 ├── .env.example              # Environment variable template
 └── LICENSE
 ```
+
+## Contributing
+
+Checkout [CONTRIBUTING.md](CONTRIBUTING.md) for more information
 
 ## License
  
