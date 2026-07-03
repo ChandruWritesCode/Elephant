@@ -59,7 +59,6 @@ func (h *WSHub) Run() {
 		select {
 		case client := <-h.Register:
 			h.mu.Lock()
-			// FIXED: Store keys in lowercase to make lookups case-insensitive
 			h.clients[strings.ToLower(client.UserID)] = client
 			h.mu.Unlock()
 			go h.broadcastStatus(client.UserID, true)
@@ -106,7 +105,6 @@ func (c *WSClient) ReadPump() {
 		switch incoming.Type {
 		case "request_status":
 			Hub.mu.RLock()
-			// FIXED: Standardize lookup to lowercase
 			_, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
 			Hub.mu.RUnlock()
 
@@ -125,16 +123,42 @@ func (c *WSClient) ReadPump() {
 			incoming.SenderID = c.UserID
 			outboundBytes, _ := json.Marshal(incoming)
 
-			Hub.mu.RLock()
-			targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
-			Hub.mu.RUnlock()
+			if incoming.GroupID != "" {
+				groupRepo := repository.NewGroupRepository()
+				members, err := groupRepo.GetGroupMembers(context.Background(), incoming.GroupID)
+				if err != nil {
+					log.Printf("Failed to resolve group membership for typing indicator: %v", err)
+					continue
+				}
 
-			if online {
-				select {
-				case targetClient.Send <- outboundBytes:
-				default:
-					Hub.Unregister <- targetClient
-					targetClient.Conn.Close()
+				Hub.mu.RLock()
+				for _, memberID := range members {
+					if memberID == c.UserID {
+						continue
+					}
+					if targetClient, online := Hub.clients[memberID]; online {
+						select {
+						case targetClient.Send <- outboundBytes:
+						default:
+							Hub.Unregister <- targetClient
+							targetClient.Conn.Close()
+						}
+					}
+				}
+				Hub.mu.RUnlock()
+
+			} else {
+				Hub.mu.RLock()
+				targetClient, online := Hub.clients[incoming.ReceiverID]
+				Hub.mu.RUnlock()
+
+				if online {
+					select {
+					case targetClient.Send <- outboundBytes:
+					default:
+						Hub.Unregister <- targetClient
+						targetClient.Conn.Close()
+					}
 				}
 			}
 
