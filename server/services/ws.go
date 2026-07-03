@@ -136,7 +136,7 @@ func (c *WSClient) ReadPump() {
 					if memberID == c.UserID {
 						continue
 					}
-					if targetClient, online := Hub.clients[memberID]; online {
+					if targetClient, online := Hub.clients[strings.ToLower(memberID)]; online {
 						select {
 						case targetClient.Send <- outboundBytes:
 						default:
@@ -149,7 +149,7 @@ func (c *WSClient) ReadPump() {
 
 			} else {
 				Hub.mu.RLock()
-				targetClient, online := Hub.clients[incoming.ReceiverID]
+				targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
 				Hub.mu.RUnlock()
 
 				if online {
@@ -165,26 +165,54 @@ func (c *WSClient) ReadPump() {
 		case "read_receipt":
 			incoming.SenderID = c.UserID
 			incoming.Timestamp = time.Now()
-
-			go func(receiverID, senderID string) {
-				err := msgRepo.MarkAsRead(context.Background(), receiverID, senderID)
-				if err != nil {
-					log.Printf("Failed to update read state flags over WS link: %v", err)
-				}
-			}(c.UserID, incoming.ReceiverID)
-
 			outboundBytes, _ := json.Marshal(incoming)
 
-			Hub.mu.RLock()
-			targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
-			Hub.mu.RUnlock()
+			if incoming.GroupID != "" {
+				go func(groupID, userID string) {
+					err := msgRepo.UpdateGroupLastRead(context.Background(), groupID, userID)
+					if err != nil {
+						log.Printf("Async group timestamp update failed over WebSocket: %v", err)
+					}
+				}(incoming.GroupID, c.UserID)
 
-			if online {
-				select {
-				case targetClient.Send <- outboundBytes:
-				default:
-					Hub.Unregister <- targetClient
-					targetClient.Conn.Close()
+				groupRepo := repository.NewGroupRepository()
+				members, err := groupRepo.GetGroupMembers(context.Background(), incoming.GroupID)
+				if err == nil {
+					Hub.mu.RLock()
+					for _, memberID := range members {
+						if memberID == c.UserID {
+							continue
+						}
+						if targetClient, online := Hub.clients[strings.ToLower(memberID)]; online {
+							select {
+							case targetClient.Send <- outboundBytes:
+							default:
+								Hub.Unregister <- targetClient
+								targetClient.Conn.Close()
+							}
+						}
+					}
+					Hub.mu.RUnlock()
+				}
+			} else {
+				go func(receiverID, senderID string) {
+					err := msgRepo.MarkAsRead(context.Background(), receiverID, senderID)
+					if err != nil {
+						log.Printf("Failed to update read state flags over WS link: %v", err)
+					}
+				}(c.UserID, incoming.ReceiverID)
+
+				Hub.mu.RLock()
+				targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
+				Hub.mu.RUnlock()
+
+				if online {
+					select {
+					case targetClient.Send <- outboundBytes:
+					default:
+						Hub.Unregister <- targetClient
+						targetClient.Conn.Close()
+					}
 				}
 			}
 

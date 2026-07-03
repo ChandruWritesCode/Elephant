@@ -63,36 +63,75 @@ func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB str
 
 func (r *MessageRepository) GetConversations(ctx context.Context, userID string) ([]models.Conversation, error) {
 	query := `
-		WITH last_messages AS (
-			SELECT DISTINCT ON (chat_user_id)
-				CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS chat_user_id,
+		WITH raw_conversations AS (
+			-- Enclosing Part A inside explicit parentheses to isolate its internal ORDER BY
+			(SELECT DISTINCT ON (CASE WHEN sender_id = $1::uuid THEN receiver_id ELSE sender_id END)
+				CASE WHEN sender_id = $1::uuid THEN receiver_id ELSE sender_id END AS chat_user_id,
+				'direct' AS type,
 				content,
 				sender_id,
 				created_at,
-				is_read
+				is_read,
+				NULL::UUID AS group_id
 			FROM messages
-			WHERE sender_id = $1 OR receiver_id = $1
-			ORDER BY chat_user_id, created_at DESC
+			WHERE (sender_id = $1::uuid OR receiver_id = $1::uuid) AND group_id IS NULL
+			ORDER BY CASE WHEN sender_id = $1::uuid THEN receiver_id ELSE sender_id END, created_at DESC)
+
+			UNION ALL
+
+			-- Enclosing Part B inside explicit parentheses to isolate its internal ORDER BY
+			(SELECT DISTINCT ON (m.group_id)
+				NULL::UUID AS chat_user_id,
+				'group' AS type,
+				m.content,
+				m.sender_id,
+				m.created_at,
+				FALSE AS is_read,
+				m.group_id
+			FROM messages m
+			JOIN group_members gm ON m.group_id = gm.group_id
+			WHERE gm.user_id = $1::uuid
+			ORDER BY m.group_id, m.created_at DESC)
 		),
-		unread_counts AS (
+		dm_unread AS (
 			SELECT sender_id, COUNT(*) AS count
 			FROM messages
-			WHERE receiver_id = $1 AND is_read = FALSE
+			WHERE receiver_id = $1::uuid AND is_read = FALSE AND group_id IS NULL
 			GROUP BY sender_id
+		),
+		group_unread AS (
+			SELECT m.group_id, COUNT(*) AS count
+			FROM messages m
+			JOIN group_members gm ON m.group_id = gm.group_id
+			WHERE gm.user_id = $1::uuid AND m.created_at > gm.last_read_at AND m.sender_id != $1::uuid
+			GROUP BY m.group_id
 		)
 		SELECT 
-			lm.chat_user_id,
-			u.username,
-			u.display_name,
-			lm.content,
-			lm.created_at,
-			lm.sender_id,
-			lm.is_read,
-			COALESCE(uc.count, 0)::INT AS unread_count
-		FROM last_messages lm
-		JOIN users u ON u.id = lm.chat_user_id
-		LEFT JOIN unread_counts uc ON uc.sender_id = lm.chat_user_id
-		ORDER BY lm.created_at DESC;
+			COALESCE(rc.chat_user_id::TEXT, rc.group_id::TEXT, '') AS id,
+			COALESCE(rc.type, 'direct') AS type,
+			COALESCE(u.username, g.name, 'Unknown Channel') AS name,
+			COALESCE(u.display_name, '') AS display_name,
+			COALESCE(rc.content, '') AS last_message,
+			COALESCE(rc.created_at, NOW()) AS last_message_time,
+			COALESCE(rc.sender_id::TEXT, '') AS sender_id,
+			COALESCE(
+				CASE 
+					WHEN rc.type = 'direct' THEN rc.is_read
+					ELSE (rc.created_at <= gm2.last_read_at)
+				END, 
+				FALSE
+			) AS is_read,
+			CASE 
+				WHEN rc.type = 'direct' THEN COALESCE(du.count, 0)::INT
+				ELSE COALESCE(gu.count, 0)::INT
+			END AS unread_count
+		FROM raw_conversations rc
+		LEFT JOIN users u ON rc.chat_user_id = u.id
+		LEFT JOIN groups g ON rc.group_id = g.id
+		LEFT JOIN dm_unread du ON rc.chat_user_id = du.sender_id
+		LEFT JOIN group_unread gu ON rc.group_id = gu.group_id
+		LEFT JOIN group_members gm2 ON gm2.group_id = rc.group_id AND gm2.user_id = $1::uuid
+		ORDER BY last_message_time DESC;
 	`
 
 	rows, err := config.DB.Query(ctx, query, userID)
@@ -105,8 +144,9 @@ func (r *MessageRepository) GetConversations(ctx context.Context, userID string)
 	for rows.Next() {
 		var c models.Conversation
 		err := rows.Scan(
-			&c.ChatUserID,
-			&c.Username,
+			&c.ID,
+			&c.Type,
+			&c.Name,
 			&c.DisplayName,
 			&c.LastMessage,
 			&c.LastMessageTime,
@@ -129,5 +169,15 @@ func (r *MessageRepository) MarkAsRead(ctx context.Context, receiverID, senderID
 		WHERE receiver_id = $1 AND sender_id = $2 AND is_read = FALSE;
 	`
 	_, err := config.DB.Exec(ctx, query, receiverID, senderID)
+	return err
+}
+
+func (r *MessageRepository) UpdateGroupLastRead(ctx context.Context, groupID, userID string) error {
+	query := `
+		UPDATE group_members 
+		SET last_read_at = CURRENT_TIMESTAMP 
+		WHERE group_id = $1 AND user_id = $2;
+	`
+	_, err := config.DB.Exec(ctx, query, groupID, userID)
 	return err
 }
