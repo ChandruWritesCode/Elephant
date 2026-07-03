@@ -50,7 +50,7 @@ jobs:
         HOST: ${{ vars.HOST }}
         PORT: ${{ vars.PORT }}
         POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }} # FIXED: Removed extra '{'
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         POSTGRES_DB: ${{ vars.POSTGRES_DB }}
         POSTGRES_PORT: ${{ vars.POSTGRES_PORT }}
         POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
@@ -66,11 +66,11 @@ jobs:
           -f migrations/002_create_refresh_tokens_up.sql \
           -f migrations/003_add_search_indexes_up.sql \
           -f migrations/004_create_message_up.sql \
-          -f migrations/005_create_message_status_up.sql\
+          -f migrations/005_create_message_status_up.sql \
           -f migrations/006_create_groups_table_up.sql
         go run main.go &
         for i in $(seq 1 10); do
-          curl -sf http://${{ vars.POSTGRES_HOST }}:${{ vars.PORT }}/api/health && break
+          curl -sf http://${{ vars.HOST }}:${{ vars.PORT }}/api/health && break
           echo "Waiting for server... attempt $i"
           sleep 2
         done
