@@ -2,9 +2,7 @@ name: Go Integration & Test Suite
 
 on:
   push:
-    branches: [ main, v0.1.5, 0.2.0 ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   test:
