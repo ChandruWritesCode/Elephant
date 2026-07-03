@@ -154,3 +154,19 @@ func (r *GroupRepository) GetMembersDetails(ctx context.Context, groupID string)
 	}
 	return members, nil
 }
+
+func (r *GroupRepository) GetByID(ctx context.Context, groupID string) (*models.Group, error) {
+	query := `SELECT id, name, created_by, created_at FROM groups WHERE id = $1;`
+	var g models.Group
+	err := config.DB.QueryRow(ctx, query, groupID).Scan(&g.ID, &g.Name, &g.CreatedBy, &g.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
+func (r *GroupRepository) UpdateName(ctx context.Context, groupID, newName string) error {
+	query := `UPDATE groups SET name = $1 WHERE id = $2;`
+	_, err := config.DB.Exec(ctx, query, newName, groupID)
+	return err
+}

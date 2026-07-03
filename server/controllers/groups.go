@@ -143,3 +143,59 @@ func HandleListGroupMembers(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: members})
 }
+
+func HandleLeaveGroup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	groupID := chi.URLParam(r, "id")
+	uid, _ := r.Context().Value(middlewares.UserIDKey).(string)
+
+	repo := repository.NewGroupRepository()
+
+	if err := repo.RemoveMember(r.Context(), groupID, uid); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to leave the group"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: "You have left the group"})
+}
+
+func HandleGetGroupDetails(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	groupID := chi.URLParam(r, "id")
+
+	repo := repository.NewGroupRepository()
+	group, err := repo.GetByID(r.Context(), groupID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Group not found"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: group})
+}
+
+type UpdateGroupReq struct {
+	Name string `json:"name"`
+}
+
+func HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	groupID := chi.URLParam(r, "id")
+
+	var req UpdateGroupReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Invalid group name"})
+		return
+	}
+
+	repo := repository.NewGroupRepository()
+	if err := repo.UpdateName(r.Context(), groupID, req.Name); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to update group name"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: "Group details updated successfully"})
+}
