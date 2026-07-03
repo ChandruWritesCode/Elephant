@@ -204,7 +204,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  final Set<String> _selectedChatIds = {};
+
+  bool get _isSelectionMode => _selectedChatIds.isNotEmpty;
+  
   Widget buildHomeTab(ChatController chatState) {
+    
     return RefreshIndicator(
       color: const Color(0xFF1890FF),
       onRefresh: () => chatState.loadInbox(),
@@ -317,7 +322,8 @@ class _HomePageState extends State<HomePage> {
                   itemCount: chatState.inbox.length,
                   itemBuilder: (context, index) {
                     final thread = chatState.inbox[index];
-                    return CustomChatCard(conversation: thread);
+                    final bool isSelected = _selectedChatIds.contains(thread.chatUserId);
+                    return CustomChatCard(conversation: thread, isSelected: isSelected);
                   },
                 ),
           SliverList(
@@ -327,7 +333,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     final chatState = context.watch<ChatController>();

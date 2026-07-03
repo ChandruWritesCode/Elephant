@@ -168,7 +168,14 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     super.dispose();
   }
 
+  final int _charLimit = 5000; // limit
+  bool _isOverLimit = false;
+
   void _handleOnChange(String text) {
+    setState(() {
+      _isOverLimit = text.length > _charLimit;
+    });
+
     final hasText = text.trim().isNotEmpty;
 
     if (hasText && !_isTyping) {
@@ -197,6 +204,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
   }
 
   void _submit() {
+    _isOverLimit = false;
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
       _typingTimer?.cancel();
@@ -214,37 +222,87 @@ class _ChatInputAreaState extends State<ChatInputArea> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                onChanged: _handleOnChange,
-                style: const TextStyle(color: Colors.black87, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: "Write a message...",
-                  hintStyle: const TextStyle(color: Colors.black38),
-                  fillColor: const Color(0xFFF5F5F5),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+      bottom: false,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            color: Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    onChanged: _handleOnChange,
+                    keyboardType: TextInputType.multiline,
+                    minLines: 1,
+                    maxLines: 5,
+
+                    // 1. Set the limit
+                    maxLength: _charLimit,
+                    // 2. CRITICAL: This allows them to keep typing past the limit so it shows "7000/5000"
+                    maxLengthEnforcement: .none,
+
+                    style: TextStyle(
+                      // 3. Turn the typed text red if they exceed the limit
+                      color: _isOverLimit ? Colors.red : Colors.black87,
+                      fontSize: 15,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "Write a message...",
+                      hintStyle: const TextStyle(color: Colors.black38),
+
+                      fillColor: _isOverLimit
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : const Color(0xFFF5F5F5),
+                      filled: true,
+                      errorText: _isOverLimit ? 'character limit exceeded' : '',
+                      counterStyle: TextStyle(
+                        color: _isOverLimit ? Colors.red : Colors.black54,
+                        fontWeight: _isOverLimit
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: _isOverLimit
+                            ? const BorderSide(color: Colors.red, width: 1.5)
+                            : BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: _isOverLimit
+                            ? const BorderSide(color: Colors.red, width: 2)
+                            : BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: _isOverLimit
+                            ? const BorderSide(color: Colors.red, width: 1.5)
+                            : BorderSide.none,
+                      ),
+
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: _isOverLimit
+                      ? const Icon(Icons.not_interested)
+                      : const Icon(Icons.send, color: Color(0xFF1890FF)),
+                  onPressed: _isOverLimit ? null : _submit,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.send, color: Color(0xFF1890FF)),
-              onPressed: _submit,
-            ),
-          ],
+          ),
         ),
       ),
     );
