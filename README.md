@@ -34,28 +34,28 @@ The fastest way to run Elephant is by pulling the published image — no Go tool
 #### Pulling image from Docker Hub
 ```bash
 docker run --name elephant-server \
-  -e PORT=8080 \
+  -e PORT=3000 \
   -e POSTGRES_HOST=host.docker.internal \
-  -e POSTGRES_PORT=5432 \
+  -e POSTGRES_PORT=3000 \
   -e POSTGRES_USER=your_db_user \
   -e POSTGRES_PASSWORD=your_db_password \
   -e POSTGRES_DB=your_db_name \
   -e JWT_SECRET=a_secure_32_character_secret_key_phrase \
-  -p 8080:8080 \
+  -p 3000:3000 \
   -d commandlinecoding/elephant:latest
  ```
 
 #### Pulling image from Github GHCR
 ```bash
 podman run --name elephant-server \
-  -e PORT=8080 \
+  -e PORT=3000 \
   -e POSTGRES_HOST=host.containers.internal \
-  -e POSTGRES_PORT=5432 \
+  -e POSTGRES_PORT=3000 \
   -e POSTGRES_USER=your_db_user \
   -e POSTGRES_PASSWORD=your_db_password \
   -e POSTGRES_DB=your_db_name \
   -e JWT_SECRET=a_secure_32_character_secret_key_phrase \
-  -p 8080:8080 \
+  -p 3000:3000 \
   -d ghcr.io/commandlinecoding/elephant:latest
 ```
 
