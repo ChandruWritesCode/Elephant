@@ -78,7 +78,7 @@ class ProfileSetupPage extends StatelessWidget {
                       context,
                       MaterialPageRoute(builder: (context) => const HomePage()),
                     );
-                    context.read<BasicProviders>().logIn();
+                    context.read<BasicProviders>().logInSave();
                   },
                   child: Row(
                     mainAxisAlignment: .center,
