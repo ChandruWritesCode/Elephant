@@ -128,3 +128,18 @@ func HandleGetGroupMessages(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: history})
 }
+
+func HandleListGroupMembers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	groupID := chi.URLParam(r, "id")
+
+	repo := repository.NewGroupRepository()
+	members, err := repo.GetMembersDetails(r.Context(), groupID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to retrieve group members roster"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: members})
+}

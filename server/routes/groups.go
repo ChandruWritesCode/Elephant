@@ -16,6 +16,7 @@ func GroupRoute(router chi.Router) {
 		sr.Use(middlewares.GroupAuthGuard)
 
 		sr.Get("/messages", controllers.HandleGetGroupMessages) // GET /api/groups/{id}/messages
+		sr.Get("/members", controllers.HandleListGroupMembers)   // GET /api/groups/{id}/members
 
 		sr.With(middlewares.GroupAdminGuard).Post("/members", controllers.HandleAddMember) // POST /api/groups/{id}/members
 		sr.With(middlewares.GroupAdminGuard).Delete("/members/{userId}", controllers.HandleRemoveMember) // DELETE /api/groups/{id}/members/{userId}

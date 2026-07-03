@@ -128,3 +128,29 @@ func (r *GroupRepository) GetGroupMessages(ctx context.Context, groupID string, 
 	}
 	return messages, nil
 }
+
+func (r *GroupRepository) GetMembersDetails(ctx context.Context, groupID string) ([]models.GroupMemberDetail, error) {
+	query := `
+		SELECT gm.user_id, u.username, COALESCE(u.display_name, '') AS display_name, gm.role, gm.joined_at
+		FROM group_members gm
+		JOIN users u ON gm.user_id = u.id
+		WHERE gm.group_id = $1
+		ORDER BY CASE WHEN gm.role = 'admin' THEN 1 ELSE 2 END, gm.joined_at ASC;
+	`
+	rows, err := config.DB.Query(ctx, query, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var members []models.GroupMemberDetail = []models.GroupMemberDetail{}
+	for rows.Next() {
+		var m models.GroupMemberDetail
+		err := rows.Scan(&m.UserID, &m.Username, &m.DisplayName, &m.Role, &m.JoinedAt)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, m)
+	}
+	return members, nil
+}
