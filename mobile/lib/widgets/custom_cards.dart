@@ -6,8 +6,11 @@ import '../controllers/chat.dart';
 
 class CustomChatCard extends StatelessWidget {
   final Conversation conversation;
+  final bool isSelected;
+  final Function? onLongPress;
+  final Function? onTap;
 
-  const CustomChatCard({super.key, required this.conversation});
+  const CustomChatCard({super.key, required this.conversation, required this.isSelected, this.onLongPress, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +18,10 @@ class CustomChatCard extends StatelessWidget {
         "${conversation.lastMessageTime.hour.toString().padLeft(2, '0')}:${conversation.lastMessageTime.minute.toString().padLeft(2, '0')}";
 
     return InkWell(
+      onLongPress: () {
+        
+      },
+
       onTap: () async {
         final controller = context.read<ChatController>();
         await controller.openChat(conversation.chatUserId);
