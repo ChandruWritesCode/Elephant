@@ -45,6 +45,10 @@ jobs:
         install-go: false
         working-directory: "server"
 
+    - name: create .env
+      run: |
+        cp .env.example .env
+
     - name: Execute Package Test Automation Suite      
       env:
         HOST: ${{ vars.HOST }}
