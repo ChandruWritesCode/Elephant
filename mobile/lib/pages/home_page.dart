@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/pages/settings%20pages/accounts.dart';
 import 'package:mobile/pages/settings_page.dart';
 import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/services/auth.dart';
@@ -232,19 +233,32 @@ class _HomePageState extends State<HomePage> {
             ),
             leading: _isSelectionMode
                 ? null
-                : const Padding(
-                    padding: EdgeInsets.only(
-                      left: 16.0,
-                      top: 10.0,
-                      bottom: 10.0,
-                    ),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Color(0xFFD6E4FF),
-                      child: Icon(
-                        Icons.person,
-                        color: Color(0xFF1890FF),
-                        size: 18,
+                : InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AccountsSettings(),
+                        ),
+                      );
+                    },
+                    child: Hero(
+                      tag: 'User Profile',
+                      child: const Padding(
+                        padding: EdgeInsets.only(
+                          left: 16.0,
+                          top: 10.0,
+                          bottom: 10.0,
+                        ),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Color(0xFFD6E4FF),
+                          child: Icon(
+                            Icons.person,
+                            color: Color(0xFF1890FF),
+                            size: 18,
+                          ),
+                        ),
                       ),
                     ),
                   ),
