@@ -20,116 +20,166 @@ class CustomChatCard extends StatelessWidget {
     required this.isSelectionMode,
   });
 
+  String _formatTimestamp(DateTime time) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDate = DateTime(time.year, time.month, time.day);
+
+    if (messageDate == today) {
+      return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+    } else if (messageDate == yesterday) {
+      return "Yesterday";
+    } else {
+      return "${time.day}/${time.month}/${time.year}";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String timeLabel =
-        "${conversation.lastMessageTime.hour.toString().padLeft(2, '0')}:${conversation.lastMessageTime.minute.toString().padLeft(2, '0')}";
+    final String timeLabel = _formatTimestamp(conversation.lastMessageTime);
+    final bool hasUnread = conversation.unreadCount > 0;
 
-    return InkWell(
-      onLongPress: onLongPress,
-
-      onTap: () async {
-        if (isSelectionMode) {
-          onTapInSelection();
-        } else {
-          final controller = context.read<ChatController>();
-          await controller.openChat(conversation.chatUserId);
-
-          if (context.mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChatPage(
-                  chatUserId: conversation.chatUserId,
-                  displayName: conversation.displayName,
-                ),
-              ),
-            );
-          }
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        color: isSelected? Colors.blue.withAlpha(20) : null,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 50,
-              height: 50,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Color(0xFFD6E4FF),
-                    child: Icon(Icons.person, color: Color(0xFF1890FF)),
+    return Material(
+      color: isSelected
+          ? Colors.blue.withValues(alpha: 0.1)
+          : Colors.transparent,
+      child: InkWell(
+        onLongPress: onLongPress,
+        onTap: () async {
+          if (isSelectionMode) {
+            onTapInSelection();
+          } else {
+            final controller = context.read<ChatController>();
+            await controller.openChat(conversation.chatUserId);
+            
+            if (context.mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatPage(
+                    chatUserId: conversation.chatUserId,
+                    displayName: conversation.displayName,
                   ),
-                  isSelected
-                      ? Align(
-                          alignment: AlignmentGeometry.bottomRight,
+                ),
+              );
+            }
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const CircleAvatar(
+                      radius: 26,
+                      backgroundColor: Color(0xFFD6E4FF),
+                      child: Icon(Icons.person, color: Color(0xFF1890FF)),
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: AnimatedScale(
+                        scale: isSelected ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutBack,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
                           child: const Icon(
                             Icons.check_circle,
                             color: Colors.blue,
+                            size: 22,
                           ),
-                        )
-                      : SizedBox.shrink(),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    conversation.displayName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    conversation.lastMessage,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  timeLabel,
-                  style: const TextStyle(color: Colors.black38, fontSize: 12),
-                ),
-                const SizedBox(height: 6),
-                if (conversation.unreadCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 3,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1890FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      "${conversation.unreadCount}",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      conversation.displayName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      conversation.lastMessage,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: hasUnread ? Colors.black87 : Colors.black54,
+                        fontWeight: hasUnread
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    timeLabel,
+                    style: TextStyle(
+                      color: hasUnread
+                          ? const Color(0xFF1890FF)
+                          : Colors.black38,
+                      fontSize: 12,
+                      fontWeight: hasUnread
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
                   ),
-              ],
-            ),
-          ],
+                  const SizedBox(height: 6),
+                  if (hasUnread)
+                    Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1890FF),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        conversation.unreadCount > 99
+                            ? "99+"
+                            : "${conversation.unreadCount}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

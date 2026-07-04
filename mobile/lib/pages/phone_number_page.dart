@@ -142,7 +142,6 @@ class NumberVerificationPage extends StatelessWidget {
                           ? TextButton(
                               onPressed: () {
                                 otp.resetTimer();
-                                // resend OTP
                               },
                               child: const Text('Resend OTP'),
                             )
