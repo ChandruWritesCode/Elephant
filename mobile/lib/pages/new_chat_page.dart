@@ -50,7 +50,7 @@ class _NewChatPageState extends State<NewChatPage> {
           autofocus: true,
           style: const TextStyle(color: Colors.black87),
           decoration: const InputDecoration(
-            hintText: "Enter exact username...",
+            hintText: "Enter minimum 3 characters...",
             hintStyle: TextStyle(color: Colors.black38),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.black26),
@@ -74,13 +74,22 @@ class _NewChatPageState extends State<NewChatPage> {
             ),
             onPressed: () {
               final text = inputController.text.trim();
-              if (text.isNotEmpty) {
+              if (text.length >= 3) {
                 context.read<ChatController>().queryUsers(text);
                 setState(() {
                   _searchController.text = text;
                 });
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Search query must be at least 3 characters.",
+                    ),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
               }
-              Navigator.pop(context);
             },
             child: const Text("Search", style: TextStyle(color: Colors.white)),
           ),
@@ -116,7 +125,9 @@ class _NewChatPageState extends State<NewChatPage> {
   @override
   Widget build(BuildContext context) {
     final chatState = context.watch<ChatController>();
-    final bool isSearching = _searchController.text.trim().isNotEmpty;
+    final String searchInput = _searchController.text.trim();
+    final bool isSearching = searchInput.isNotEmpty;
+    final bool hasValidQueryLength = searchInput.length >= 3;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -174,7 +185,17 @@ class _NewChatPageState extends State<NewChatPage> {
           ),
           Expanded(
             child: isSearching
-                ? (chatState.isSearchLoading
+                ? (!hasValidQueryLength
+                      ? const Center(
+                          child: Text(
+                            "Type at least 3 characters to search...",
+                            style: TextStyle(
+                              color: Colors.black45,
+                              fontSize: 14,
+                            ),
+                          ),
+                        )
+                      : chatState.isSearchLoading
                       ? const Center(
                           child: CircularProgressIndicator(
                             color: Color(0xFF1890FF),
