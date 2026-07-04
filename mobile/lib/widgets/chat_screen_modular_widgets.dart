@@ -222,6 +222,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
+      top: false,
       bottom: false,
       child: ClipRRect(
         child: BackdropFilter(
