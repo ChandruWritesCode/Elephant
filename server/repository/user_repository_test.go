@@ -7,7 +7,6 @@ import (
 	"github.com/commandlinecoding/elephant/server/config"
 )
 
-// will have to remove manually deleteing users. Will be updated after delete users function is implemented
 func TestUserRepository_create_and_search(t *testing.T) {
 	ctx := context.Background()
 

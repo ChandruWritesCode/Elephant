@@ -40,7 +40,6 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate the tokens
 	tokens, err := services.GenerateTokenPair(user.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -51,7 +50,6 @@ func HandleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// FIX: Persist the registration refresh token to the database
 	tokenRepo := repository.NewRefreshTokenRepository()
 	hashedRt := services.HashToken(tokens.RefreshToken)
 	expiry := time.Now().Add(7 * 24 * time.Hour)

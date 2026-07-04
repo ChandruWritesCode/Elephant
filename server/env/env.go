@@ -42,7 +42,6 @@ func init() {
 		}
 	}
 
-	// assign the values with fallbacks
 	HOST = getEnv("HOST", "127.0.0.1")
 	PORT = getEnv("PORT", "3000")
 
