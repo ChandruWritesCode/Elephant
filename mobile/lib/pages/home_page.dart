@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'; // Required for ScrollDirection
+import 'package:flutter/rendering.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'package:mobile/pages/settings%20pages/accounts.dart';
 import 'package:mobile/pages/settings_page.dart';
@@ -23,7 +23,6 @@ class _HomePageState extends State<HomePage> {
   final _searchController = TextEditingController();
   final Set<String> _selectedChatIds = {};
 
-  // Scrolling improvements
   late final ScrollController _scrollController;
   bool _isFabVisible = true;
 
@@ -34,7 +33,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _isSearchOpen = false;
 
-    // Initialize Scroll Controller and Listener
     _scrollController = ScrollController();
     _scrollController.addListener(() {
       if (_scrollController.position.userScrollDirection ==
@@ -51,9 +49,7 @@ class _HomePageState extends State<HomePage> {
       final authService = AuthService();
       final token = await authService.getToken();
       if (token != null) {
-        // Initialize WebSocket session immediately on app load
         await chatController.initSession(token);
-        // Load the initial inbox
         await chatController.loadInbox();
       }
     });
@@ -63,7 +59,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _searchController.dispose();
     _scrollController
-        .dispose(); // Dispose the controller to prevent memory leaks
+        .dispose();
     super.dispose();
   }
 
@@ -236,9 +232,7 @@ class _HomePageState extends State<HomePage> {
       onRefresh: _isSelectionMode ? () async {} : () => chatState.loadInbox(),
       child: CustomScrollView(
         controller: _scrollController,
-        // Dismisses keyboard when user starts scrolling the list
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        // Ensures smooth, bouncy native scrolling even if the list is empty
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
@@ -474,7 +468,6 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
 
-          // Replaced hacky empty SliverList with clean SliverPadding
           const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
