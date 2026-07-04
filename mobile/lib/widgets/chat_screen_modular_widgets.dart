@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart'; 
 
 class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String name;
@@ -104,11 +105,35 @@ class ChatBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              message,
-              style: TextStyle(
-                color: isMe ? Colors.white : Colors.black87,
-                fontSize: 15,
+            MarkdownBody(
+              data: message,
+              selectable: false,
+              styleSheet: MarkdownStyleSheet(
+                p: TextStyle(
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontSize: 15,
+                ),
+                strong: TextStyle(
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                ),
+                em: TextStyle(
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontStyle: FontStyle.italic,
+                ),
+                del: TextStyle(
+                  color: isMe ? Colors.white70 : Colors.black54,
+                  decoration: TextDecoration.lineThrough,
+                ),
+                code: TextStyle(
+                  backgroundColor: isMe ? Colors.blue[800] : Colors.grey[300],
+                  color: isMe ? Colors.blue[50] : Colors.red[800],
+                  fontFamily: 'monospace',
+                ),
+                a: TextStyle(
+                  color: isMe ? Colors.blue[100] : Colors.blue[700],
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
             const SizedBox(height: 4),
@@ -155,8 +180,21 @@ class ChatInputArea extends StatefulWidget {
 
 class _ChatInputAreaState extends State<ChatInputArea> {
   final _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode(); 
+
   bool _isTyping = false;
   Timer? _typingTimer;
+  bool _showFormattingToolbar = false; 
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      setState(() {
+        _showFormattingToolbar = _focusNode.hasFocus;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -165,6 +203,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
       widget.onTypingChanged?.call(false);
     }
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -203,6 +242,35 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     }
   }
 
+  void _insertMarkdown(String prefix, String suffix) {
+    final text = _controller.text;
+    final selection = _controller.selection;
+
+    if (!selection.isValid || selection.start == selection.end) {
+      final newText = text + prefix + suffix;
+      _controller.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(
+          offset: newText.length - suffix.length,
+        ),
+      );
+    } else {
+      final selectedText = text.substring(selection.start, selection.end);
+      final newText = text.replaceRange(
+        selection.start,
+        selection.end,
+        '$prefix$selectedText$suffix',
+      );
+      _controller.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(
+          offset: selection.start + prefix.length + selectedText.length,
+        ),
+      );
+    }
+    _handleOnChange(_controller.text);
+  }
+
   void _submit() {
     _isOverLimit = false;
     final text = _controller.text.trim();
@@ -230,80 +298,139 @@ class _ChatInputAreaState extends State<ChatInputArea> {
           child: Container(
             color: Colors.transparent,
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    onChanged: _handleOnChange,
-                    keyboardType: TextInputType.multiline,
-                    minLines: 1,
-                    maxLines: 5,
-                    maxLength: _charLimit,
-                    maxLengthEnforcement: .none,
-                    // cursorColor: Colors.blue,
-                    style: TextStyle(
-                      color: _isOverLimit ? Colors.red : Colors.black87,
-                      fontSize: 15,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: "Write a message...",
-                      hintStyle: const TextStyle(color: Colors.black38),
-
-                      fillColor: _isOverLimit
-                          ? Colors.red.withValues(alpha: 0.1)
-                          : const Color(0xFFF5F5F5),
-                      filled: true,
-                      errorText: _isOverLimit
-                          ? 'character limit exceeded'
-                          : null,
-                      counterStyle: TextStyle(
-                        color: _isOverLimit ? Colors.red : Colors.black54,
-                        fontWeight: _isOverLimit
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: _isOverLimit
-                            ? const BorderSide(color: Colors.red, width: 1.5)
-                            : BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: _isOverLimit
-                            ? const BorderSide(color: Colors.red, width: 2)
-                            : BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: _isOverLimit
-                            ? const BorderSide(color: Colors.red, width: 1.5)
-                            : BorderSide.none,
-                      ),
-
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                  ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  child: _showFormattingToolbar
+                      ? Container(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              _FormatButton(
+                                icon: Icons.format_bold,
+                                onPressed: () => _insertMarkdown('**', '**'),
+                              ),
+                              _FormatButton(
+                                icon: Icons.format_italic,
+                                onPressed: () => _insertMarkdown('*', '*'),
+                              ),
+                              _FormatButton(
+                                icon: Icons.format_strikethrough,
+                                onPressed: () => _insertMarkdown('~~', '~~'),
+                              ),
+                              _FormatButton(
+                                icon: Icons.code,
+                                onPressed: () => _insertMarkdown('`', '`'),
+                              ),
+                              _FormatButton(
+                                icon: Icons.link,
+                                onPressed: () => _insertMarkdown('[', '](url)'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: _isOverLimit
-                      ? const Icon(Icons.not_interested)
-                      : const Icon(Icons.send, color: Color(0xFF1890FF)),
-                  onPressed: _isOverLimit ? null : _submit,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        onChanged: _handleOnChange,
+                        keyboardType: TextInputType.multiline,
+                        minLines: 1,
+                        maxLines: 5,
+                        maxLength: _charLimit,
+                        maxLengthEnforcement: .none,
+                        style: TextStyle(
+                          color: _isOverLimit ? Colors.red : Colors.black87,
+                          fontSize: 15,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: "Write a message...",
+                          hintStyle: const TextStyle(color: Colors.black38),
+                          fillColor: _isOverLimit
+                              ? Colors.red.withValues(alpha: 0.1)
+                              : const Color(0xFFF5F5F5),
+                          filled: true,
+                          errorText: _isOverLimit
+                              ? 'character limit exceeded'
+                              : null,
+                          counterStyle: TextStyle(
+                            color: _isOverLimit ? Colors.red : Colors.black54,
+                            fontWeight: _isOverLimit
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: _isOverLimit
+                                ? const BorderSide(
+                                    color: Colors.red,
+                                    width: 1.5,
+                                  )
+                                : BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: _isOverLimit
+                                ? const BorderSide(color: Colors.red, width: 2)
+                                : BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: _isOverLimit
+                                ? const BorderSide(
+                                    color: Colors.red,
+                                    width: 1.5,
+                                  )
+                                : BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: _isOverLimit
+                          ? const Icon(Icons.not_interested)
+                          : const Icon(Icons.send, color: Color(0xFF1890FF)),
+                      onPressed: _isOverLimit ? null : _submit,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FormatButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _FormatButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, size: 20, color: Colors.black54),
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      constraints: const BoxConstraints(),
     );
   }
 }
