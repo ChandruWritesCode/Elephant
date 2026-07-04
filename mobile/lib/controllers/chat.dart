@@ -88,7 +88,15 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<void> queryUsers(String term) async {
-    if (term.trim().isEmpty) {
+    final String cleanTerm = term.trim();
+
+    if (cleanTerm.isEmpty) {
+      contactSearchResults.clear();
+      notifyListeners();
+      return;
+    }
+
+    if (cleanTerm.length < 3) {
       contactSearchResults.clear();
       notifyListeners();
       return;
@@ -97,7 +105,7 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final res = await _api.searchUsers(term);
+      final res = await _api.searchUsers(cleanTerm);
       if (res.data == null) {
         contactSearchResults = [];
       } else if (res.data is List) {
