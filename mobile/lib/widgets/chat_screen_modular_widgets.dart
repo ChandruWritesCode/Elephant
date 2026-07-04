@@ -240,14 +240,10 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                     keyboardType: TextInputType.multiline,
                     minLines: 1,
                     maxLines: 5,
-
-                    // 1. Set the limit
                     maxLength: _charLimit,
-                    // 2. CRITICAL: This allows them to keep typing past the limit so it shows "7000/5000"
                     maxLengthEnforcement: .none,
-
+                    // cursorColor: Colors.blue,
                     style: TextStyle(
-                      // 3. Turn the typed text red if they exceed the limit
                       color: _isOverLimit ? Colors.red : Colors.black87,
                       fontSize: 15,
                     ),
@@ -259,7 +255,9 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           ? Colors.red.withValues(alpha: 0.1)
                           : const Color(0xFFF5F5F5),
                       filled: true,
-                      errorText: _isOverLimit ? 'character limit exceeded' : '',
+                      errorText: _isOverLimit
+                          ? 'character limit exceeded'
+                          : null,
                       counterStyle: TextStyle(
                         color: _isOverLimit ? Colors.red : Colors.black54,
                         fontWeight: _isOverLimit

@@ -12,9 +12,18 @@ class BasicProviders extends ChangeNotifier {
 
   bool get notificationsSwitch => _notificationsSwitch;
 
-  void toggleNotifications(){
+  void initNotificationsSwitch() async {
+    final pref = await SharedPreferences.getInstance();
+    _notificationsSwitch = pref.getBool('notificationToggle') ?? false;
+    notifyListeners();
+  }
+
+  void toggleNotifications() async {
     _notificationsSwitch = !_notificationsSwitch;
     notifyListeners();
+
+    final pref = await SharedPreferences.getInstance();
+    pref.setBool('notificationToggle', _notificationsSwitch);
   }
 
   bool get isInitialized => _isInitialized;
@@ -35,7 +44,7 @@ class BasicProviders extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> logIn() async {
+  Future<void> logInSave() async {
     _hasLoggedIn = true;
     notifyListeners();
 
@@ -43,7 +52,7 @@ class BasicProviders extends ChangeNotifier {
     await pref.setBool('hasLoggedIn', true);
   }
 
-  Future<void> logOut() async {
+  Future<void> logOutSave() async {
     _hasLoggedIn = false;
     notifyListeners();
 
