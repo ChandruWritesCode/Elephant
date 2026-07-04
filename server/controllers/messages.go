@@ -13,8 +13,9 @@ import (
 )
 
 type SendMessageReq struct {
-	ReceiverID string `json:"receiver_id"`
-	Content    string `json:"content"`
+	ReceiverID       string `json:"receiver_id"`
+	Content          string `json:"content"`
+	ReplyToMessageID string `json:"reply_to_message_id,omitempty"`
 }
 
 func HandleSendMessage(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +42,7 @@ func HandleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	svc := services.NewMessageService()
-	msg, err := svc.SendMessage(r.Context(), senderID, req.ReceiverID, req.Content)
+	msg, err := svc.SendMessage(r.Context(), senderID, req.ReceiverID, req.Content, req.ReplyToMessageID)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})

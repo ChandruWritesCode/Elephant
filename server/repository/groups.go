@@ -105,10 +105,13 @@ func (r *GroupRepository) GetGroupMembers(ctx context.Context, groupID string) (
 
 func (r *GroupRepository) GetGroupMessages(ctx context.Context, groupID string, before time.Time, limit int) ([]models.Message, error) {
 	query := `
-		SELECT id, sender_id, content, created_at 
-		FROM messages 
-		WHERE group_id = $1 AND created_at < $2
-		ORDER BY created_at DESC 
+		SELECT 
+			m.id, m.sender_id, m.content, m.created_at, m.reply_to_message_id,
+			q.sender_id AS quoted_sender_id, q.content AS quoted_content
+		FROM messages m
+		LEFT JOIN messages q ON m.reply_to_message_id = q.id
+		WHERE m.group_id = $1::uuid AND m.created_at < $2
+		ORDER BY m.created_at DESC
 		LIMIT $3;
 	`
 	rows, err := config.DB.Query(ctx, query, groupID, before, limit)
@@ -117,16 +120,27 @@ func (r *GroupRepository) GetGroupMessages(ctx context.Context, groupID string, 
 	}
 	defer rows.Close()
 
-	messages := []models.Message{}
+	var history []models.Message = []models.Message{}
 	for rows.Next() {
 		var m models.Message
-		if err := rows.Scan(&m.ID, &m.SenderID, &m.Content, &m.CreatedAt); err != nil {
+		var qSender, qContent *string
+
+		err := rows.Scan(&m.ID, &m.SenderID, &m.Content, &m.CreatedAt, &m.ReplyToMessageID, &qSender, &qContent)
+		if err != nil {
 			return nil, err
 		}
+
 		m.GroupID = groupID
-		messages = append(messages, m)
+		if m.ReplyToMessageID != nil && qSender != nil && qContent != nil {
+			m.QuotedMessage = &models.QuotedMessage{
+				ID:       *m.ReplyToMessageID,
+				SenderID: *qSender,
+				Content:  *qContent,
+			}
+		}
+		history = append(history, m)
 	}
-	return messages, nil
+	return history, nil
 }
 
 func (r *GroupRepository) GetMembersDetails(ctx context.Context, groupID string) ([]models.GroupMemberDetail, error) {

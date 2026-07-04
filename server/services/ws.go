@@ -222,16 +222,43 @@ func (c *WSClient) ReadPump() {
 
 			go func(msg models.WSMessage) {
 				query := `
-					INSERT INTO messages (sender_id, receiver_id, group_id, content, id)
-					VALUES ($1::uuid, NULLIF($2, '')::uuid, NULLIF($3, '')::uuid, $4, COALESCE(NULLIF($5, '')::uuid, gen_random_uuid()));
+					INSERT INTO messages (sender_id, receiver_id, group_id, content, id, reply_to_message_id)
+					VALUES (
+						$1::uuid, 
+						NULLIF($2, '')::uuid, 
+						NULLIF($3, '')::uuid, 
+						$4, 
+						COALESCE(NULLIF($5, '')::uuid, gen_random_uuid()),
+						NULLIF($6, '')::uuid
+					);
 				`
-				_, err := config.DB.Exec(context.Background(), query, msg.SenderID, msg.ReceiverID, msg.GroupID, msg.Content, msg.MessageID)
+				_, err := config.DB.Exec(context.Background(), query, msg.SenderID, msg.ReceiverID, msg.GroupID, msg.Content, msg.MessageID, msg.ReplyToMessageID)
 				if err != nil {
 					log.Printf("Async group/direct write failure: %v", err)
 				}
 			}(incoming)
 
-			outboundBytes, _ := json.Marshal(incoming)
+			var outboundBytes []byte
+			if incoming.ReplyToMessageID != "" {
+				if q, err := msgRepo.GetMessagePreview(context.Background(), incoming.ReplyToMessageID); err == nil {
+					enriched := map[string]interface{}{
+						"type":                incoming.Type,
+						"sender_id":           incoming.SenderID,
+						"receiver_id":         incoming.ReceiverID,
+						"group_id":            incoming.GroupID,
+						"content":             incoming.Content,
+						"message_id":          incoming.MessageID,
+						"reply_to_message_id": incoming.ReplyToMessageID,
+						"timestamp":           incoming.Timestamp,
+						"quoted_message":      q,
+					}
+					outboundBytes, _ = json.Marshal(enriched)
+				} else {
+					outboundBytes, _ = json.Marshal(incoming)
+				}
+			} else {
+				outboundBytes, _ = json.Marshal(incoming)
+			}
 
 			if incoming.GroupID != "" {
 				groupRepo := repository.NewGroupRepository()
@@ -256,7 +283,6 @@ func (c *WSClient) ReadPump() {
 					}
 				}
 				Hub.mu.RUnlock()
-
 			} else {
 				Hub.mu.RLock()
 				targetClient, online := Hub.clients[strings.ToLower(incoming.ReceiverID)]
