@@ -41,7 +41,6 @@ func HandleWSUpgrade(w http.ResponseWriter, r *http.Request) {
 
 	services.Hub.Register <- client
 
-	// Kick off matching concurrency workers
 	go client.WritePump()
 	go client.ReadPump()
 }

@@ -17,7 +17,7 @@ func NewMessageService() *MessageService {
 	return &MessageService{repo: repository.NewMessageRepository()}
 }
 
-func (s *MessageService) SendMessage(ctx context.Context, senderID, receiverID, content string) (*models.Message, error) {
+func (s *MessageService) SendMessage(ctx context.Context, senderID, receiverID, content, replyToMessageID string) (*models.Message, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, errors.New("message content cannot be empty")
@@ -25,5 +25,5 @@ func (s *MessageService) SendMessage(ctx context.Context, senderID, receiverID, 
 	if senderID == receiverID {
 		return nil, errors.New("cannot send a message to yourself")
 	}
-	return s.repo.CreateMessage(ctx, senderID, receiverID, content)
+	return s.repo.CreateMessage(ctx, senderID, receiverID, content, replyToMessageID)
 }

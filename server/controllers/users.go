@@ -15,7 +15,6 @@ import (
 func HandleUserSearch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract parameters
 	q := r.URL.Query().Get("q")
 	pageStr := r.URL.Query().Get("page")
 	limitStr := r.URL.Query().Get("limit")

@@ -14,18 +14,19 @@ func NewMessageRepository() *MessageRepository {
 	return &MessageRepository{}
 }
 
-func (r *MessageRepository) CreateMessage(ctx context.Context, senderID, receiverID, content string) (*models.Message, error) {
+func (r *MessageRepository) CreateMessage(ctx context.Context, senderID, receiverID, content, replyToID string) (*models.Message, error) {
 	query := `
-		INSERT INTO messages (sender_id, receiver_id, content)
-		VALUES ($1, $2, $3)
-		RETURNING id, sender_id, receiver_id, content, created_at;
+		INSERT INTO messages (sender_id, receiver_id, content, reply_to_message_id)
+		VALUES ($1, $2, $3, NULLIF($4, '')::uuid)
+		RETURNING id, sender_id, receiver_id, content, reply_to_message_id, created_at;
 	`
 	var msg models.Message
-	err := config.DB.QueryRow(ctx, query, senderID, receiverID, content).Scan(
+	err := config.DB.QueryRow(ctx, query, senderID, receiverID, content, replyToID).Scan(
 		&msg.ID,
 		&msg.SenderID,
 		&msg.ReceiverID,
 		&msg.Content,
+		&msg.ReplyToMessageID,
 		&msg.CreatedAt,
 	)
 	if err != nil {
@@ -36,11 +37,14 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, senderID, receive
 
 func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB string, before time.Time, limit int) ([]models.Message, error) {
 	query := `
-		SELECT id, sender_id, receiver_id, content, created_at, is_read
-		FROM messages
-		WHERE ((sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1))
-		  AND created_at < $3
-		ORDER BY created_at DESC
+		SELECT 
+			m.id, m.sender_id, m.receiver_id, m.content, m.created_at, m.is_read, m.reply_to_message_id,
+			q.sender_id AS quoted_sender_id, q.content AS quoted_content
+		FROM messages m
+		LEFT JOIN messages q ON m.reply_to_message_id = q.id
+		WHERE ((m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $2 AND m.receiver_id = $1))
+		  AND m.group_id IS NULL AND m.created_at < $3
+		ORDER BY m.created_at DESC
 		LIMIT $4;
 	`
 	rows, err := config.DB.Query(ctx, query, userA, userB, before, limit)
@@ -52,13 +56,33 @@ func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB str
 	var history []models.Message = []models.Message{}
 	for rows.Next() {
 		var m models.Message
-		err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.CreatedAt, &m.IsRead)
+		var qSender, qContent *string
+
+		err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.CreatedAt, &m.IsRead, &m.ReplyToMessageID, &qSender, &qContent)
 		if err != nil {
 			return nil, err
+		}
+
+		if m.ReplyToMessageID != nil && qSender != nil && qContent != nil {
+			m.QuotedMessage = &models.QuotedMessage{
+				ID:       *m.ReplyToMessageID,
+				SenderID: *qSender,
+				Content:  *qContent,
+			}
 		}
 		history = append(history, m)
 	}
 	return history, nil
+}
+
+func (r *MessageRepository) GetMessagePreview(ctx context.Context, messageID string) (*models.QuotedMessage, error) {
+	query := `SELECT id, sender_id, content FROM messages WHERE id = $1::uuid;`
+	var q models.QuotedMessage
+	err := config.DB.QueryRow(ctx, query, messageID).Scan(&q.ID, &q.SenderID, &q.Content)
+	if err != nil {
+		return nil, err
+	}
+	return &q, nil
 }
 
 func (r *MessageRepository) GetConversations(ctx context.Context, userID string) ([]models.Conversation, error) {
