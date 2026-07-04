@@ -68,7 +68,7 @@ func HandleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 
 	limit, _ := strconv.Atoi(limitStr)
 	if limit <= 0 || limit > 100 {
-		limit = 50 // Reference requirement ceiling limit mapping
+		limit = 50
 	}
 
 	before := time.Now()
