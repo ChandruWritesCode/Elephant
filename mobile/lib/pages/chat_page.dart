@@ -20,11 +20,8 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
-
   bool _showScrollToBottom = false;
-
   final Set<int> _selectedIndices = {};
-
   dynamic _replyingToMessage;
 
   @override
@@ -33,7 +30,7 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController.addListener(_scrollListener);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
+      _scrollToBottom(animated: false);
     });
   }
 
@@ -51,9 +48,11 @@ class _ChatPageState extends State<ChatPage> {
 
   void _scrollListener() {
     if (!_scrollController.hasClients) return;
+
     final isScrolledUp =
         _scrollController.position.maxScrollExtent - _scrollController.offset >
         100;
+
     if (isScrolledUp != _showScrollToBottom) {
       setState(() {
         _showScrollToBottom = isScrolledUp;
@@ -61,13 +60,17 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+  void _scrollToBottom({bool animated = true}) {
+    if (!_scrollController.hasClients) return;
+
+    if (animated) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
       );
+    } else {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
   }
 
@@ -80,7 +83,9 @@ class _ChatPageState extends State<ChatPage> {
       _replyingToMessage = null;
     });
 
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
   }
 
   void _toggleSelection(int index) {
@@ -107,6 +112,10 @@ class _ChatPageState extends State<ChatPage> {
         .join('\n');
 
     Clipboard.setData(ClipboardData(text: selectedTexts));
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
 
     _clearSelection();
   }
@@ -142,36 +151,43 @@ class _ChatPageState extends State<ChatPage> {
       extendBody: true,
       extendBodyBehindAppBar: true,
 
-      appBar: isSelectionMode
-          ? AppBar(
-              backgroundColor: Colors.blueAccent,
-              leading: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: _clearSelection,
-              ),
-              title: Text(
-                '${_selectedIndices.length} Selected',
-                style: const TextStyle(color: Colors.white),
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.white),
-                  onPressed: () => _copySelectedMessages(activeChat),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.white),
-                  onPressed: () {
-                    // TODO delete on DB
-                    _clearSelection();
-                  },
-                ),
-              ],
-            )
-          : GlassAppBar(
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: isSelectionMode
+              ? AppBar(
+                  key: const ValueKey('SelectionAppBar'),
+                  backgroundColor: Colors.blueAccent,
+                  leading: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: _clearSelection,
+                  ),
+                  title: Text(
+                    '${_selectedIndices.length} Selected',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.copy, color: Colors.white),
+                      onPressed: () => _copySelectedMessages(activeChat),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      onPressed: () {
+                        // TODO: delete on DB
+                        _clearSelection();
+                      },
+                    ),
+                  ],
+                )
+              : GlassAppBar(
+                  key: const ValueKey('GlassAppBar'),
                   name: widget.displayName,
                   status: _getPresenceStatusText(chatState),
-                )
-                as PreferredSizeWidget,
+                ),
+        ),
+      ),
 
       body: Stack(
         children: [
@@ -184,6 +200,11 @@ class _ChatPageState extends State<ChatPage> {
                 )
               : ListView.builder(
                   controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: EdgeInsets.only(
                     top: 120,
                     bottom: _replyingToMessage != null ? 180 : 120,
@@ -284,18 +305,27 @@ class _ChatPageState extends State<ChatPage> {
                   },
                 ),
 
-          if (_showScrollToBottom)
-            Positioned(
-              right: 16,
-              bottom: _replyingToMessage != null ? 140 : 90,
-              child: FloatingActionButton(
-                mini: true,
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.blue,
-                onPressed: _scrollToBottom,
-                child: const Icon(Icons.keyboard_arrow_down),
+          Positioned(
+            right: 16,
+            bottom: _replyingToMessage != null ? 140 : 90,
+            child: AnimatedScale(
+              scale: _showScrollToBottom ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutBack,
+              child: AnimatedOpacity(
+                opacity: _showScrollToBottom ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: FloatingActionButton(
+                  mini: true,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.blue,
+                  elevation: 4,
+                  onPressed: () => _scrollToBottom(animated: true),
+                  child: const Icon(Icons.keyboard_arrow_down),
+                ),
               ),
             ),
+          ),
 
           Align(
             alignment: Alignment.bottomCenter,
@@ -306,10 +336,18 @@ class _ChatPageState extends State<ChatPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: Colors.white,
                       border: const Border(
                         left: BorderSide(color: Colors.blue, width: 4),
+                        top: BorderSide(color: Colors.black12, width: 1),
                       ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 4,
+                          offset: Offset(0, -2),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
