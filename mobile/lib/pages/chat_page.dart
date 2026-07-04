@@ -20,11 +20,8 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
-
   bool _showScrollToBottom = false;
-
   final Set<int> _selectedIndices = {};
-
   dynamic _replyingToMessage;
 
   @override
@@ -33,7 +30,7 @@ class _ChatPageState extends State<ChatPage> {
     _scrollController.addListener(_scrollListener);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
+      _scrollToBottom(animated: false);
     });
   }
 
@@ -51,9 +48,11 @@ class _ChatPageState extends State<ChatPage> {
 
   void _scrollListener() {
     if (!_scrollController.hasClients) return;
+
     final isScrolledUp =
         _scrollController.position.maxScrollExtent - _scrollController.offset >
         100;
+
     if (isScrolledUp != _showScrollToBottom) {
       setState(() {
         _showScrollToBottom = isScrolledUp;
@@ -61,13 +60,17 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+  void _scrollToBottom({bool animated = true}) {
+    if (!_scrollController.hasClients) return;
+
+    if (animated) {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
       );
+    } else {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
   }
 
@@ -80,7 +83,9 @@ class _ChatPageState extends State<ChatPage> {
       _replyingToMessage = null;
     });
 
-    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
   }
 
   void _toggleSelection(int index) {
@@ -107,6 +112,10 @@ class _ChatPageState extends State<ChatPage> {
         .join('\n');
 
     Clipboard.setData(ClipboardData(text: selectedTexts));
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
 
     _clearSelection();
   }
@@ -137,222 +146,261 @@ class _ChatPageState extends State<ChatPage> {
     final activeChat = chatState.activeChat;
     final isSelectionMode = _selectedIndices.isNotEmpty;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      extendBody: true,
-      extendBodyBehindAppBar: true,
+    return PopScope(
+      canPop: !isSelectionMode,
+      onPopInvokedWithResult: (didPop, result) {
+        setState(() {
+          _selectedIndices.clear();
+        });
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        extendBody: true,
+        extendBodyBehindAppBar: true,
 
-      appBar: isSelectionMode
-          ? AppBar(
-              backgroundColor: Colors.blueAccent,
-              leading: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: _clearSelection,
-              ),
-              title: Text(
-                '${_selectedIndices.length} Selected',
-                style: const TextStyle(color: Colors.white),
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.copy, color: Colors.white),
-                  onPressed: () => _copySelectedMessages(activeChat),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.white),
-                  onPressed: () {
-                    // TODO delete on DB
-                    _clearSelection();
-                  },
-                ),
-              ],
-            )
-          : GlassAppBar(
-                  name: widget.displayName,
-                  status: _getPresenceStatusText(chatState),
-                )
-                as PreferredSizeWidget,
-
-      body: Stack(
-        children: [
-          activeChat.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No messages yet",
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: isSelectionMode
+                ? AppBar(
+                    key: const ValueKey('SelectionAppBar'),
+                    backgroundColor: Colors.blueAccent,
+                    leading: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: _clearSelection,
+                    ),
+                    title: Text(
+                      '${_selectedIndices.length} Selected',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.copy, color: Colors.white),
+                        onPressed: () => _copySelectedMessages(activeChat),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.white),
+                        onPressed: () {
+                          // TODO: delete on DB
+                          _clearSelection();
+                        },
+                      ),
+                    ],
+                  )
+                : GlassAppBar(
+                    key: const ValueKey('GlassAppBar'),
+                    name: widget.displayName,
+                    status: _getPresenceStatusText(chatState),
                   ),
-                )
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: EdgeInsets.only(
-                    top: 120,
-                    bottom: _replyingToMessage != null ? 180 : 120,
-                    left: 16,
-                    right: 16,
-                  ),
-                  itemCount: activeChat.length,
-                  itemBuilder: (context, index) {
-                    final msg = activeChat[index];
-                    final bool isSelected = _selectedIndices.contains(index);
+          ),
+        ),
 
-                    bool showDateSeparator = false;
-                    if (index == 0) {
-                      showDateSeparator = true;
-                    } else {
-                      final prevMsg = activeChat[index - 1];
-                      if (!_isSameDay(msg.createdAt, prevMsg.createdAt)) {
+        body: Stack(
+          children: [
+            activeChat.isEmpty
+                ? const Center(
+                    child: Text(
+                      "No messages yet",
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.only(
+                      top: 120,
+                      bottom: _replyingToMessage != null ? 180 : 120,
+                      left: 16,
+                      right: 16,
+                    ),
+                    itemCount: activeChat.length,
+                    itemBuilder: (context, index) {
+                      final msg = activeChat[index];
+                      final bool isSelected = _selectedIndices.contains(index);
+
+                      bool showDateSeparator = false;
+                      if (index == 0) {
                         showDateSeparator = true;
+                      } else {
+                        final prevMsg = activeChat[index - 1];
+                        if (!_isSameDay(msg.createdAt, prevMsg.createdAt)) {
+                          showDateSeparator = true;
+                        }
                       }
-                    }
 
-                    final String cleanSenderId = msg.senderId
-                        .trim()
-                        .toLowerCase();
-                    final String cleanPeerId = widget.chatUserId
-                        .trim()
-                        .toLowerCase();
-                    final bool isMe =
-                        cleanSenderId == 'me' ||
-                        (cleanSenderId.isNotEmpty &&
-                            cleanSenderId != cleanPeerId);
+                      final String cleanSenderId = msg.senderId
+                          .trim()
+                          .toLowerCase();
+                      final String cleanPeerId = widget.chatUserId
+                          .trim()
+                          .toLowerCase();
+                      final bool isMe =
+                          cleanSenderId == 'me' ||
+                          (cleanSenderId.isNotEmpty &&
+                              cleanSenderId != cleanPeerId);
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (showDateSeparator)
-                          Center(
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (showDateSeparator)
+                            Center(
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _formatDateSeparator(msg.createdAt),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          GestureDetector(
+                            onLongPress: () => _toggleSelection(index),
+                            onTap: () {
+                              if (isSelectionMode) _toggleSelection(index);
+                            },
                             child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 16),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[200],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _formatDateSeparator(msg.createdAt),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
+                              color: isSelected
+                                  ? Colors.blue.withValues(alpha: 0.2)
+                                  : Colors.transparent,
+                              child: Dismissible(
+                                key: ValueKey(
+                                  msg.createdAt.toString() + index.toString(),
+                                ),
+                                direction: DismissDirection.startToEnd,
+                                confirmDismiss: (direction) async {
+                                  setState(() {
+                                    _replyingToMessage = msg;
+                                  });
+                                  return false;
+                                },
+                                background: Container(
+                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.only(left: 16),
+                                  color: Colors.transparent,
+                                  child: const Icon(
+                                    Icons.reply,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                child: ChatBubble(
+                                  message: msg.content,
+                                  isMe: isMe,
+                                  timestamp: msg.createdAt,
+                                  isRead: msg.isRead,
                                 ),
                               ),
                             ),
                           ),
+                        ],
+                      );
+                    },
+                  ),
 
-                        GestureDetector(
-                          onLongPress: () => _toggleSelection(index),
-                          onTap: () {
-                            if (isSelectionMode) _toggleSelection(index);
-                          },
-                          child: Container(
-                            color: isSelected
-                                ? Colors.blue.withValues(alpha: 0.2)
-                                : Colors.transparent,
-                            child: Dismissible(
-                              key: ValueKey(
-                                msg.createdAt.toString() + index.toString(),
-                              ),
-                              direction: DismissDirection.startToEnd,
-                              confirmDismiss: (direction) async {
-                                setState(() {
-                                  _replyingToMessage = msg;
-                                });
-                                return false;
-                              },
-                              background: Container(
-                                alignment: Alignment.centerLeft,
-                                padding: const EdgeInsets.only(left: 16),
-                                color: Colors.transparent,
-                                child: const Icon(
-                                  Icons.reply,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              child: ChatBubble(
-                                message: msg.content,
-                                isMe: isMe,
-                                timestamp: msg.createdAt,
-                                isRead: msg.isRead,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-          if (_showScrollToBottom)
             Positioned(
               right: 16,
               bottom: _replyingToMessage != null ? 140 : 90,
-              child: FloatingActionButton(
-                mini: true,
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.blue,
-                onPressed: _scrollToBottom,
-                child: const Icon(Icons.keyboard_arrow_down),
+              child: AnimatedScale(
+                scale: _showScrollToBottom ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutBack,
+                child: AnimatedOpacity(
+                  opacity: _showScrollToBottom ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue,
+                    elevation: 4,
+                    onPressed: () => _scrollToBottom(animated: true),
+                    child: const Icon(Icons.keyboard_arrow_down),
+                  ),
+                ),
               ),
             ),
 
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_replyingToMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      border: const Border(
-                        left: BorderSide(color: Colors.blue, width: 4),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_replyingToMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: const Border(
+                          left: BorderSide(color: Colors.blue, width: 4),
+                          top: BorderSide(color: Colors.black12, width: 1),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, -2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Replying to message",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _replyingToMessage.content,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.black87),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 20),
+                            onPressed: () =>
+                                setState(() => _replyingToMessage = null),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Replying to message",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _replyingToMessage.content,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.black87),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 20),
-                          onPressed: () =>
-                              setState(() => _replyingToMessage = null),
-                        ),
-                      ],
-                    ),
+                  ChatInputArea(
+                    onSendMessage: _sendMessage,
+                    onTypingChanged: (isTyping) => context
+                        .read<ChatController>()
+                        .sendTypingNotification(isTyping),
                   ),
-                ChatInputArea(
-                  onSendMessage: _sendMessage,
-                  onTypingChanged: (isTyping) => context
-                      .read<ChatController>()
-                      .sendTypingNotification(isTyping),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'package:mobile/pages/settings%20pages/accounts.dart';
 import 'package:mobile/pages/settings_page.dart';
@@ -22,20 +23,33 @@ class _HomePageState extends State<HomePage> {
   final _searchController = TextEditingController();
   final Set<String> _selectedChatIds = {};
 
+  late final ScrollController _scrollController;
+  bool _isFabVisible = true;
+
   bool get _isSelectionMode => _selectedChatIds.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
     _isSearchOpen = false;
+
+    _scrollController = ScrollController();
+    _scrollController.addListener(() {
+      if (_scrollController.position.userScrollDirection ==
+          ScrollDirection.reverse) {
+        if (_isFabVisible) setState(() => _isFabVisible = false);
+      } else if (_scrollController.position.userScrollDirection ==
+          ScrollDirection.forward) {
+        if (!_isFabVisible) setState(() => _isFabVisible = true);
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final chatController = context.read<ChatController>();
       final authService = AuthService();
       final token = await authService.getToken();
       if (token != null) {
-        // Initialize WebSocket session immediately on app load
         await chatController.initSession(token);
-        // Load the initial inbox
         await chatController.loadInbox();
       }
     });
@@ -44,6 +58,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController
+        .dispose();
     super.dispose();
   }
 
@@ -215,6 +231,11 @@ class _HomePageState extends State<HomePage> {
       color: const Color(0xFF1890FF),
       onRefresh: _isSelectionMode ? () async {} : () => chatState.loadInbox(),
       child: CustomScrollView(
+        controller: _scrollController,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           SliverAppBar(
             shadowColor: Colors.transparent,
@@ -446,9 +467,8 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-          SliverList(
-            delegate: SliverChildListDelegate([const SizedBox(height: 120)]),
-          ),
+
+          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
     );
@@ -489,18 +509,28 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         floatingActionButton: _page == 1
-            ? Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: FloatingActionButton(
-                  heroTag: "fab_pen",
-                  backgroundColor: const Color(0xFF1890FF),
-                  child: const Icon(Icons.edit, color: Colors.white),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const NewChatPage()),
-                    );
-                  },
+            ? AnimatedSlide(
+                duration: const Duration(milliseconds: 300),
+                offset: _isFabVisible ? Offset.zero : const Offset(0, 2),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: _isFabVisible ? 1.0 : 0.0,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: FloatingActionButton(
+                      heroTag: "fab_pen",
+                      backgroundColor: const Color(0xFF1890FF),
+                      child: const Icon(Icons.edit, color: Colors.white),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NewChatPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               )
             : null,

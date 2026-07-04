@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:mobile/pages/select_contact_page.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'chat_page.dart';
@@ -144,9 +145,10 @@ class _NewChatPageState extends State<NewChatPage> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black54),
-            onPressed: () {},
+          PopupMenuButton(
+            itemBuilder: (context) => [
+              PopupMenuItem(child: Text("Share username by QR")),
+            ],
           ),
         ],
       ),
@@ -258,7 +260,14 @@ class _NewChatPageState extends State<NewChatPage> {
                       _buildActionRow(
                         icon: Icons.group,
                         label: "New group",
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SelectContactPage(),
+                            ),
+                          );
+                        },
                       ),
                       _buildActionRow(
                         icon: Icons.alternate_email,
