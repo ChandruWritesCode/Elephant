@@ -1,4 +1,4 @@
-FROM golang:alpine3.23 AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -8,16 +8,18 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o elephant-server .
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root/
+FROM alpine:3.20
 
+RUN apk --no-cache add ca-certificates tzdata
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+WORKDIR /app
 
 COPY --from=builder /app/elephant-server .
-COPY --from=builder /app/migrations ./migrations
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
+
+RUN chown -R appuser:appgroup /app
+USER appuser
 
 EXPOSE 3000
 
-CMD ["./entrypoint.sh"]
+CMD ["./elephant-server"]
