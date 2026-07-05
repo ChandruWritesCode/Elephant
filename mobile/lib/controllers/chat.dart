@@ -19,8 +19,12 @@ class ChatController extends ChangeNotifier {
   bool isPeerTyping = false;
   bool isPeerOnline = false;
   bool isSearchLoading = false;
+  bool _isWsInitialized = false;
 
   Future<void> initSession(String token) async {
+    if (_isWsInitialized) return;
+    _isWsInitialized = true;
+
     await _ws.connect(token);
     _ws.stream?.listen(
       (rawFrame) {
@@ -34,8 +38,12 @@ class ChatController extends ChangeNotifier {
         }
       },
       onError: (err) => debugPrint("WS Pipeline Error: $err"),
-      onDone: () => _ws.disconnect(),
+      onDone: () {
+        _ws.disconnect();
+        _isWsInitialized = false;
+      },
     );
+
     await loadInbox();
   }
 

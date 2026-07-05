@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_rich_text/simple_rich_text.dart';
 import '../models/conversation.dart';
