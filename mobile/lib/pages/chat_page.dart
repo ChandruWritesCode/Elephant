@@ -18,15 +18,17 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   bool _showScrollToBottom = false;
+  bool _isNearBottom = true;
   final Set<int> _selectedIndices = {};
   dynamic _replyingToMessage;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_scrollListener);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -36,6 +38,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,12 +49,27 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    if (_isNearBottom) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToBottom(animated: true);
+        }
+      });
+    }
+  }
+
   void _scrollListener() {
     if (!_scrollController.hasClients) return;
 
-    final isScrolledUp =
-        _scrollController.position.maxScrollExtent - _scrollController.offset >
-        100;
+    final maxScrollExtent = _scrollController.position.maxScrollExtent;
+    final offset = _scrollController.offset;
+
+    _isNearBottom = maxScrollExtent - offset <= 100;
+
+    final isScrolledUp = maxScrollExtent - offset > 100;
 
     if (isScrolledUp != _showScrollToBottom) {
       setState(() {
@@ -120,9 +138,9 @@ class _ChatPageState extends State<ChatPage> {
     _clearSelection();
   }
 
-  String _getPresenceStatusText(ChatController state) {
-    if (state.isPeerTyping) return 'typing...';
-    return state.isPeerOnline ? 'Online' : 'Offline';
+  UserStatus _getPresenceStatusText(ChatController state) {
+    if (state.isPeerTyping) return UserStatus.typing;
+    return state.isPeerOnline ? UserStatus.online : UserStatus.offline;
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {
@@ -145,6 +163,7 @@ class _ChatPageState extends State<ChatPage> {
     final chatState = context.watch<ChatController>();
     final activeChat = chatState.activeChat;
     final isSelectionMode = _selectedIndices.isNotEmpty;
+    final theme = Theme.of(context);
 
     return PopScope(
       canPop: !isSelectionMode,
@@ -154,10 +173,9 @@ class _ChatPageState extends State<ChatPage> {
         });
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         extendBody: true,
         extendBodyBehindAppBar: true,
-
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight),
           child: AnimatedSwitcher(
@@ -165,24 +183,32 @@ class _ChatPageState extends State<ChatPage> {
             child: isSelectionMode
                 ? AppBar(
                     key: const ValueKey('SelectionAppBar'),
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: theme.colorScheme.primary,
                     leading: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: Icon(
+                        Icons.close,
+                        color: theme.colorScheme.onPrimary,
+                      ),
                       onPressed: _clearSelection,
                     ),
                     title: Text(
                       '${_selectedIndices.length} Selected',
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: theme.colorScheme.onPrimary),
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.copy, color: Colors.white),
+                        icon: Icon(
+                          Icons.copy,
+                          color: theme.colorScheme.onPrimary,
+                        ),
                         onPressed: () => _copySelectedMessages(activeChat),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.white),
+                        icon: Icon(
+                          Icons.delete,
+                          color: theme.colorScheme.onPrimary,
+                        ),
                         onPressed: () {
-                          // TODO: delete on DB
                           _clearSelection();
                         },
                       ),
@@ -195,14 +221,16 @@ class _ChatPageState extends State<ChatPage> {
                   ),
           ),
         ),
-
         body: Stack(
           children: [
             activeChat.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       "No messages yet",
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
                     ),
                   )
                 : ListView.builder(
@@ -214,7 +242,7 @@ class _ChatPageState extends State<ChatPage> {
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: EdgeInsets.only(
                       top: 120,
-                      bottom: _replyingToMessage != null ? 180 : 120,
+                      bottom: _replyingToMessage != null ? 220 : 140,
                       left: 16,
                       right: 16,
                     ),
@@ -258,19 +286,19 @@ class _ChatPageState extends State<ChatPage> {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[200],
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   _formatDateSeparator(msg.createdAt),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.black54,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),
                             ),
-
                           GestureDetector(
                             onLongPress: () => _toggleSelection(index),
                             onTap: () {
@@ -278,7 +306,9 @@ class _ChatPageState extends State<ChatPage> {
                             },
                             child: Container(
                               color: isSelected
-                                  ? Colors.blue.withValues(alpha: 0.2)
+                                  ? theme.colorScheme.primary.withValues(
+                                      alpha: 0.2,
+                                    )
                                   : Colors.transparent,
                               child: Dismissible(
                                 key: ValueKey(
@@ -295,9 +325,11 @@ class _ChatPageState extends State<ChatPage> {
                                   alignment: Alignment.centerLeft,
                                   padding: const EdgeInsets.only(left: 16),
                                   color: Colors.transparent,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.reply,
-                                    color: Colors.grey,
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.7,
+                                    ),
                                   ),
                                 ),
                                 child: ChatBubble(
@@ -313,10 +345,9 @@ class _ChatPageState extends State<ChatPage> {
                       );
                     },
                   ),
-
             Positioned(
               right: 16,
-              bottom: _replyingToMessage != null ? 140 : 90,
+              bottom: _replyingToMessage != null ? 180 : 100,
               child: AnimatedScale(
                 scale: _showScrollToBottom ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 250),
@@ -326,8 +357,8 @@ class _ChatPageState extends State<ChatPage> {
                   duration: const Duration(milliseconds: 200),
                   child: FloatingActionButton(
                     mini: true,
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blue,
+                    backgroundColor: theme.colorScheme.surface,
+                    foregroundColor: theme.colorScheme.primary,
                     elevation: 4,
                     onPressed: () => _scrollToBottom(animated: true),
                     child: const Icon(Icons.keyboard_arrow_down),
@@ -335,7 +366,6 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               ),
             ),
-
             Align(
               alignment: Alignment.bottomCenter,
               child: Column(
@@ -345,16 +375,19 @@ class _ChatPageState extends State<ChatPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: const Border(
-                          left: BorderSide(color: Colors.blue, width: 4),
-                          top: BorderSide(color: Colors.black12, width: 1),
+                        color: theme.colorScheme.surface,
+                        border: Border(
+                          left: BorderSide(
+                            color: theme.colorScheme.primary,
+                            width: 4,
+                          ),
+                          top: BorderSide(color: theme.dividerColor, width: 1),
                         ),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Colors.black12,
+                            color: theme.shadowColor.withValues(alpha: 0.1),
                             blurRadius: 4,
-                            offset: Offset(0, -2),
+                            offset: const Offset(0, -2),
                           ),
                         ],
                       ),
@@ -364,11 +397,11 @@ class _ChatPageState extends State<ChatPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   "Replying to message",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
+                                    color: theme.colorScheme.primary,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -377,13 +410,19 @@ class _ChatPageState extends State<ChatPage> {
                                   _replyingToMessage.content,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.black87),
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurface,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close, size: 20),
+                            icon: Icon(
+                              Icons.close,
+                              size: 20,
+                              color: theme.iconTheme.color,
+                            ),
                             onPressed: () =>
                                 setState(() => _replyingToMessage = null),
                           ),

@@ -1,32 +1,49 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart'; 
+import 'package:flutter/services.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:intl/intl.dart';
+
+enum UserStatus { offline, online, typing }
 
 class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String name;
-  final String status;
+  final UserStatus status;
 
   const GlassAppBar({super.key, required this.name, required this.status});
 
+  String _getStatusText() {
+    switch (status) {
+      case UserStatus.typing:
+        return "typing...";
+      case UserStatus.online:
+        return "Online";
+      case UserStatus.offline:
+        return "Offline";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: AppBar(
-          backgroundColor: Colors.white.withValues(alpha: 0.4),
+          backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.4),
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
+            icon: Icon(Icons.arrow_back, color: theme.iconTheme.color),
             onPressed: () => Navigator.pop(context),
           ),
           title: Row(
             children: [
-              const CircleAvatar(
-                backgroundColor: Color(0xFFD6E4FF),
-                child: Icon(Icons.person, color: Color(0xFF1890FF)),
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Icon(Icons.person, color: theme.colorScheme.primary),
               ),
               const SizedBox(width: 12),
               Column(
@@ -34,20 +51,20 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(
-                      color: Colors.black87,
+                    style: TextStyle(
+                      color: theme.textTheme.titleLarge?.color,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    status,
+                    _getStatusText(),
                     style: TextStyle(
-                      color: status == "typing..."
+                      color: status == UserStatus.typing
                           ? Colors.green
-                          : Colors.black54,
+                          : theme.textTheme.bodySmall?.color,
                       fontSize: 12,
-                      fontWeight: status == "typing..."
+                      fontWeight: status == UserStatus.typing
                           ? FontWeight.bold
                           : FontWeight.normal,
                     ),
@@ -79,10 +96,46 @@ class ChatBubble extends StatelessWidget {
     required this.isRead,
   });
 
+  MarkdownStyleSheet _getMarkdownStyle(
+    bool isMe,
+    Color primaryColor,
+    Color onPrimary,
+    Color onSurface,
+  ) {
+    return MarkdownStyleSheet(
+      p: TextStyle(color: isMe ? onPrimary : onSurface, fontSize: 15),
+      strong: TextStyle(
+        color: isMe ? onPrimary : onSurface,
+        fontWeight: FontWeight.bold,
+      ),
+      em: TextStyle(
+        color: isMe ? onPrimary : onSurface,
+        fontStyle: FontStyle.italic,
+      ),
+      del: TextStyle(
+        color: isMe
+            ? onPrimary.withValues(alpha: 0.7)
+            : onSurface.withValues(alpha: 0.5),
+        decoration: TextDecoration.lineThrough,
+      ),
+      code: TextStyle(
+        backgroundColor: isMe
+            ? primaryColor.withValues(alpha: 0.8)
+            : Colors.grey.withValues(alpha: 0.3),
+        color: isMe ? onPrimary : Colors.red[800],
+        fontFamily: 'monospace',
+      ),
+      a: TextStyle(
+        color: isMe ? onPrimary.withValues(alpha: 0.9) : primaryColor,
+        decoration: TextDecoration.underline,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String formattedTime =
-        "${timestamp.hour % 12 == 0 ? 12 : timestamp.hour % 12}:${timestamp.minute.toString().padLeft(2, '0')} ${timestamp.hour >= 12 ? 'PM' : 'AM'}";
+    final theme = Theme.of(context);
+    final String formattedTime = DateFormat.jm().format(timestamp);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -93,7 +146,9 @@ class ChatBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF1890FF) : const Color(0xFFF0F2F5),
+          color: isMe
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -108,32 +163,11 @@ class ChatBubble extends StatelessWidget {
             MarkdownBody(
               data: message,
               selectable: false,
-              styleSheet: MarkdownStyleSheet(
-                p: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
-                  fontSize: 15,
-                ),
-                strong: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
-                  fontWeight: FontWeight.bold,
-                ),
-                em: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
-                  fontStyle: FontStyle.italic,
-                ),
-                del: TextStyle(
-                  color: isMe ? Colors.white70 : Colors.black54,
-                  decoration: TextDecoration.lineThrough,
-                ),
-                code: TextStyle(
-                  backgroundColor: isMe ? Colors.blue[800] : Colors.grey[300],
-                  color: isMe ? Colors.blue[50] : Colors.red[800],
-                  fontFamily: 'monospace',
-                ),
-                a: TextStyle(
-                  color: isMe ? Colors.blue[100] : Colors.blue[700],
-                  decoration: TextDecoration.underline,
-                ),
+              styleSheet: _getMarkdownStyle(
+                isMe,
+                theme.colorScheme.primary,
+                theme.colorScheme.onPrimary,
+                theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -143,7 +177,9 @@ class ChatBubble extends StatelessWidget {
                 Text(
                   formattedTime,
                   style: TextStyle(
-                    color: isMe ? Colors.white70 : Colors.black38,
+                    color: isMe
+                        ? theme.colorScheme.onPrimary.withValues(alpha: 0.7)
+                        : theme.colorScheme.onSurfaceVariant,
                     fontSize: 10,
                   ),
                 ),
@@ -152,7 +188,9 @@ class ChatBubble extends StatelessWidget {
                   Icon(
                     isRead ? Icons.done_all : Icons.done,
                     size: 14,
-                    color: isRead ? Colors.lightBlueAccent : Colors.white70,
+                    color: isRead
+                        ? Colors.lightBlueAccent
+                        : theme.colorScheme.onPrimary.withValues(alpha: 0.7),
                   ),
                 ],
               ],
@@ -180,11 +218,13 @@ class ChatInputArea extends StatefulWidget {
 
 class _ChatInputAreaState extends State<ChatInputArea> {
   final _controller = TextEditingController();
-  final FocusNode _focusNode = FocusNode(); 
+  final FocusNode _focusNode = FocusNode();
 
   bool _isTyping = false;
   Timer? _typingTimer;
-  bool _showFormattingToolbar = false; 
+  bool _showFormattingToolbar = false;
+  final int _charLimit = 5000;
+  bool _isOverLimit = false;
 
   @override
   void initState() {
@@ -206,9 +246,6 @@ class _ChatInputAreaState extends State<ChatInputArea> {
     _focusNode.dispose();
     super.dispose();
   }
-
-  final int _charLimit = 5000; // limit
-  bool _isOverLimit = false;
 
   void _handleOnChange(String text) {
     setState(() {
@@ -289,9 +326,11 @@ class _ChatInputAreaState extends State<ChatInputArea> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SafeArea(
       top: false,
-      bottom: false,
+      bottom: true,
       child: ClipRRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
@@ -347,23 +386,38 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                         minLines: 1,
                         maxLines: 5,
                         maxLength: _charLimit,
-                        maxLengthEnforcement: .none,
+                        maxLengthEnforcement: MaxLengthEnforcement.none,
                         style: TextStyle(
-                          color: _isOverLimit ? Colors.red : Colors.black87,
+                          color: _isOverLimit
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSurface,
                           fontSize: 15,
                         ),
+                        buildCounter:
+                            (
+                              context, {
+                              required currentLength,
+                              required isFocused,
+                              required maxLength,
+                            }) => _isOverLimit
+                            ? Text('$currentLength/$maxLength')
+                            : null,
                         decoration: InputDecoration(
                           hintText: "Write a message...",
-                          hintStyle: const TextStyle(color: Colors.black38),
+                          hintStyle: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                           fillColor: _isOverLimit
-                              ? Colors.red.withValues(alpha: 0.1)
-                              : const Color(0xFFF5F5F5),
+                              ? theme.colorScheme.error.withValues(alpha: 0.1)
+                              : theme.colorScheme.surfaceContainerHighest,
                           filled: true,
                           errorText: _isOverLimit
                               ? 'character limit exceeded'
                               : null,
                           counterStyle: TextStyle(
-                            color: _isOverLimit ? Colors.red : Colors.black54,
+                            color: _isOverLimit
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.onSurfaceVariant,
                             fontWeight: _isOverLimit
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -371,8 +425,8 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: _isOverLimit
-                                ? const BorderSide(
-                                    color: Colors.red,
+                                ? BorderSide(
+                                    color: theme.colorScheme.error,
                                     width: 1.5,
                                   )
                                 : BorderSide.none,
@@ -380,14 +434,17 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: _isOverLimit
-                                ? const BorderSide(color: Colors.red, width: 2)
+                                ? BorderSide(
+                                    color: theme.colorScheme.error,
+                                    width: 2,
+                                  )
                                 : BorderSide.none,
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: _isOverLimit
-                                ? const BorderSide(
-                                    color: Colors.red,
+                                ? BorderSide(
+                                    color: theme.colorScheme.error,
                                     width: 1.5,
                                   )
                                 : BorderSide.none,
@@ -403,7 +460,7 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                     IconButton(
                       icon: _isOverLimit
                           ? const Icon(Icons.not_interested)
-                          : const Icon(Icons.send, color: Color(0xFF1890FF)),
+                          : Icon(Icons.send, color: theme.colorScheme.primary),
                       onPressed: _isOverLimit ? null : _submit,
                     ),
                   ],
@@ -425,8 +482,13 @@ class _FormatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return IconButton(
-      icon: Icon(icon, size: 20, color: Colors.black54),
+      icon: Icon(
+        icon,
+        size: 20,
+        color: theme.iconTheme.color?.withValues(alpha: 0.6) ?? Colors.black54,
+      ),
       onPressed: onPressed,
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.symmetric(horizontal: 4),

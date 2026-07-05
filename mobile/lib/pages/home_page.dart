@@ -58,8 +58,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController
-        .dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -70,6 +69,7 @@ class _HomePageState extends State<HomePage> {
     required String label,
     required double width,
   }) {
+    final theme = Theme.of(context);
     final isSelected = _page == index;
 
     return GestureDetector(
@@ -92,7 +92,9 @@ class _HomePageState extends State<HomePage> {
                 curve: Curves.easeOutBack,
                 child: Icon(
                   isSelected ? activeIcon : icon,
-                  color: isSelected ? const Color(0xFF1890FF) : Colors.black54,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
                   size: 24,
                 ),
               ),
@@ -109,8 +111,8 @@ class _HomePageState extends State<HomePage> {
                           ? FontWeight.bold
                           : FontWeight.w600,
                       color: isSelected
-                          ? const Color(0xFF1890FF)
-                          : Colors.black54,
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -123,6 +125,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget buildGlassNavigationBar({Key? key}) {
+    final theme = Theme.of(context);
     return SafeArea(
       key: key,
       child: Padding(
@@ -134,21 +137,21 @@ class _HomePageState extends State<HomePage> {
             child: Container(
               height: 68,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.35),
+                color: theme.colorScheme.surface.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.45),
+                  color: theme.colorScheme.surface.withValues(alpha: 0.45),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: theme.shadowColor.withValues(alpha: 0.04),
                     blurRadius: 24,
                     spreadRadius: 2,
                     offset: const Offset(0, 8),
                   ),
                   BoxShadow(
-                    color: const Color(0xFF1890FF).withValues(alpha: 0.03),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.03),
                     blurRadius: 16,
                     spreadRadius: -4,
                     offset: const Offset(0, -2),
@@ -175,13 +178,15 @@ class _HomePageState extends State<HomePage> {
                           ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.85),
+                              color: theme.colorScheme.surface.withValues(
+                                alpha: 0.85,
+                              ),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(
-                                    0xFF1890FF,
-                                  ).withValues(alpha: 0.08),
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -227,8 +232,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget buildHomeTab(ChatController chatState) {
+    final theme = Theme.of(context);
+
     return RefreshIndicator(
-      color: const Color(0xFF1890FF),
+      color: theme.colorScheme.primary,
       onRefresh: _isSelectionMode ? () async {} : () => chatState.loadInbox(),
       child: CustomScrollView(
         controller: _scrollController,
@@ -249,7 +256,9 @@ class _HomePageState extends State<HomePage> {
               child: BackdropFilter(
                 enabled: true,
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(color: Colors.white.withValues(alpha: 0.4)),
+                child: Container(
+                  color: theme.scaffoldBackgroundColor.withValues(alpha: 0.7),
+                ),
               ),
             ),
             leading: _isSelectionMode
@@ -265,18 +274,18 @@ class _HomePageState extends State<HomePage> {
                     },
                     child: Hero(
                       tag: 'User Profile',
-                      child: const Padding(
-                        padding: EdgeInsets.only(
+                      child: Padding(
+                        padding: const EdgeInsets.only(
                           left: 16.0,
                           top: 10.0,
                           bottom: 10.0,
                         ),
                         child: CircleAvatar(
                           radius: 18,
-                          backgroundColor: Color(0xFFD6E4FF),
+                          backgroundColor: theme.colorScheme.primaryContainer,
                           child: Icon(
                             Icons.person,
-                            color: Color(0xFF1890FF),
+                            color: theme.colorScheme.primary,
                             size: 18,
                           ),
                         ),
@@ -287,7 +296,10 @@ class _HomePageState extends State<HomePage> {
             title: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: _isSelectionMode
-                  ? Text('${_selectedChatIds.length} Selected')
+                  ? Text(
+                      '${_selectedChatIds.length} Selected',
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                    )
                   : AnimatedSwitcher(
                       switchInCurve: Curves.decelerate,
                       switchOutCurve: Curves.decelerate,
@@ -310,16 +322,17 @@ class _HomePageState extends State<HomePage> {
                                 controller: _searchController,
                                 key: const ValueKey('search'),
                                 autofocus: true,
-                                style: const TextStyle(color: Colors.black87),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                                 decoration: InputDecoration(
                                   hintText: 'Search conversations...',
-                                  hintStyle: const TextStyle(
-                                    color: Colors.black38,
+                                  hintStyle: TextStyle(
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                   filled: true,
-                                  fillColor: Colors.black.withValues(
-                                    alpha: 0.05,
-                                  ),
+                                  fillColor: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.08),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 0,
@@ -331,15 +344,15 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Elephant',
                               style: TextStyle(
                                 letterSpacing: 0.5,
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                                color: theme.colorScheme.onSurface,
                               ),
-                              key: ValueKey('title'),
+                              key: const ValueKey('title'),
                             ),
                     ),
             ),
@@ -355,12 +368,13 @@ class _HomePageState extends State<HomePage> {
                       },
                       icon: Icon(
                         _isSearchOpen ? Icons.close : Icons.search,
-                        color: Colors.black87,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
               if (!_isSearchOpen)
                 !_isSelectionMode
                     ? PopupMenuButton<String>(
+                        iconColor: theme.colorScheme.onSurface,
                         onSelected: (String value) {
                           switch (value) {
                             case 'settings':
@@ -393,6 +407,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                       )
                     : PopupMenuButton<String>(
+                        iconColor: theme.colorScheme.onSurface,
                         onSelected: (String value) {
                           switch (value) {
                             case 'Select all':
@@ -427,12 +442,14 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           chatState.inbox.isEmpty
-              ? const SliverFillRemaining(
+              ? SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
                     child: Text(
                       "No conversations yet",
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 )
@@ -467,7 +484,6 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-
           const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
@@ -477,6 +493,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final chatState = context.watch<ChatController>();
+    final theme = Theme.of(context);
 
     return PopScope(
       canPop: _selectedChatIds.isEmpty,
@@ -487,23 +504,29 @@ class _HomePageState extends State<HomePage> {
         });
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         extendBodyBehindAppBar: true,
         extendBody: true,
         body: IndexedStack(
           index: _page,
           children: [
-            const Center(
+            Center(
               child: Text(
                 "No stories available",
-                style: TextStyle(color: Colors.black54, fontSize: 16),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 16,
+                ),
               ),
             ),
             buildHomeTab(chatState),
-            const Center(
+            Center(
               child: Text(
                 "No recent calls",
-                style: TextStyle(color: Colors.black54, fontSize: 16),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 16,
+                ),
               ),
             ),
           ],
@@ -511,16 +534,19 @@ class _HomePageState extends State<HomePage> {
         floatingActionButton: _page == 1
             ? AnimatedSlide(
                 duration: const Duration(milliseconds: 300),
-                offset: _isFabVisible ? Offset.zero : const Offset(0, 2),
+                offset: (_isFabVisible && !_isSelectionMode)
+                    ? Offset.zero
+                    : const Offset(0, 2),
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 300),
-                  opacity: _isFabVisible ? 1.0 : 0.0,
+                  opacity: (_isFabVisible && !_isSelectionMode) ? 1.0 : 0.0,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: FloatingActionButton(
                       heroTag: "fab_pen",
-                      backgroundColor: const Color(0xFF1890FF),
-                      child: const Icon(Icons.edit, color: Colors.white),
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      child: const Icon(Icons.edit),
                       onPressed: () {
                         Navigator.push(
                           context,
