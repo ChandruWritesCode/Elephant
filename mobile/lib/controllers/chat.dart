@@ -5,6 +5,9 @@ import '../models/conversation.dart';
 import '../services/api.dart';
 import '../services/ws.dart';
 
+import 'dart:async';
+import 'dart:isolate';
+
 class ChatController extends ChangeNotifier {
   final ApiService _api = ApiService();
   final WebSocketService _ws = WebSocketService();
@@ -60,17 +63,18 @@ class ChatController extends ChangeNotifier {
       final res = await _api.getChatHistory(targetUid);
       final targetList = _extractDataList(res.data, ['messages']);
 
-      activeChat = targetList
-          .map((json) => Message.fromJson(json))
-          .toList()
-          .reversed
-          .toList();
+      activeChat = await Isolate.run(() {
+        return targetList.reversed
+            .map((json) => Message.fromJson(json))
+            .toList();
+      });
 
       _ws.sendReadReceipt(targetId: targetUid);
       _ws.sendRequestStatus(targetId: targetUid);
 
       notifyListeners();
-      await loadInbox();
+
+      unawaited(loadInbox());
     } catch (e) {
       debugPrint("Timeline tracking fail: $e");
       notifyListeners();
