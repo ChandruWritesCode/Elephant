@@ -45,7 +45,7 @@ class AccountsSettings extends StatelessWidget {
               await context.read<BasicProviders>().logOutSave();
 
               if (context.mounted) {
-                context.read<ChatController>().clearSessionData();
+                // context.read<AuthState>().clearSessionData();
 
                 Navigator.pushAndRemoveUntil(
                   context,
