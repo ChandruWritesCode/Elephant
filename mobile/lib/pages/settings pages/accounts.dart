@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/auth.dart';
-import 'package:mobile/controllers/chat.dart';
 import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/main.dart';
 import 'package:provider/provider.dart';

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/pages/chat_page.dart';
+import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
 
 class SelectContactPage extends StatefulWidget {
@@ -15,7 +17,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
 
   Timer? _debounceTimer;
   bool _isSearchOpen = false;
+
   final _searchController = TextEditingController();
+  final _groupNameController = TextEditingController();
 
   void _onSearchChanged(String value, ChatController chatState) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
@@ -42,6 +46,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
+    _groupNameController.dispose();
     super.dispose();
   }
 
@@ -270,7 +275,6 @@ class _SelectContactPageState extends State<SelectContactPage> {
                           ),
                         ),
                       ],
-
                       const Padding(
                         padding: EdgeInsets.only(left: 16, top: 20, bottom: 8),
                         child: Text(
@@ -282,7 +286,6 @@ class _SelectContactPageState extends State<SelectContactPage> {
                           ),
                         ),
                       ),
-
                       if (chatState.inbox.isNotEmpty)
                         ...chatState.inbox
                             .where(
@@ -304,10 +307,136 @@ class _SelectContactPageState extends State<SelectContactPage> {
       ),
       floatingActionButton: _selectedContacts.isNotEmpty
           ? FloatingActionButton(
-              onPressed: () {},
               backgroundColor: Colors.blue,
               elevation: 4,
               child: const Icon(Icons.arrow_forward, color: Colors.white),
+              onPressed: () {
+                context.read<GroupController>().addContacts(_selectedContacts);
+
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                  ),
+                  builder: (BuildContext bottomSheetContext) {
+                    return Consumer<GroupController>(
+                      builder: (context, groupState, child) {
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: MediaQuery.of(
+                              bottomSheetContext,
+                            ).viewInsets.bottom,
+                            left: 16,
+                            right: 16,
+                            top: 24,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'New Group',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _groupNameController,
+                                autofocus: true,
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter group name',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  FilledButton(
+                                    onPressed: groupState.isLoading
+                                        ? null
+                                        : () async {
+                                            final groupName =
+                                                _groupNameController.text
+                                                    .trim();
+                                            if (groupName.isEmpty) return;
+
+                                            final memberIds = _selectedContacts
+                                                .keys
+                                                .toList();
+
+                                            final newGroup = await context
+                                                .read<GroupController>()
+                                                .createGroup(
+                                                  groupName: groupName,
+                                                  memberIds: memberIds,
+                                                );
+
+                                            if (newGroup != null) {
+                                              if (!context.mounted) return;
+
+                                              context
+                                                  .read<ChatController>()
+                                                  .loadInbox();
+
+                                              Navigator.of(
+                                                bottomSheetContext,
+                                              ).pop();
+                                              Navigator.of(
+                                                context,
+                                              ).pushReplacement(
+                                                MaterialPageRoute(
+                                                  builder: (context) => ChatPage(
+                                                    chatUserId: newGroup
+                                                        .id, 
+                                                    displayName: newGroup
+                                                        .name,
+                                                  ),
+                                                ),
+                                              );
+
+                                              context
+                                                  .read<ChatController>()
+                                                  .openChat(newGroup.id);
+                                            } else {
+                                              if (!context.mounted) return;
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Failed to create group',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                    child: groupState.isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Text('Create'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
             )
           : null,
     );
