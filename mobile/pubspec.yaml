@@ -50,6 +50,7 @@ dependencies:
   dio: ^5.10.0
   flutter_markdown_plus: ^1.0.7
   intl: ^0.20.3
+  simple_rich_text: ^2.0.49
 
 launcher_name:
   default: "Elephant"
