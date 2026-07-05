@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:provider/provider.dart';
 import '../models/conversation.dart';
 import '../pages/chat_page.dart';
@@ -52,7 +53,7 @@ class CustomChatCard extends StatelessWidget {
           } else {
             final controller = context.read<ChatController>();
             await controller.openChat(conversation.chatUserId);
-            
+
             if (context.mounted) {
               Navigator.push(
                 context,
@@ -118,18 +119,50 @@ class CustomChatCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      conversation.lastMessage,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: hasUnread ? Colors.black87 : Colors.black54,
-                        fontWeight: hasUnread
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                    MarkdownBody(
+                      data: conversation.lastMessage,
+                      selectable: false,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(
+                          color: hasUnread ? Colors.black87 : Colors.black54,
+                          fontSize: 15,
+                        ),
+                        strong: TextStyle(
+                          color: hasUnread
+                              ? Colors.black87
+                              : const Color.fromARGB(171, 0, 0, 0),
+                          fontWeight: FontWeight.bold,
+                        ),
+                        em: TextStyle(
+                          color: hasUnread ? Colors.black87 : Colors.black54,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        del: TextStyle(
+                          color: hasUnread ? Colors.black87 : Colors.black54,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                        code: TextStyle(
+                          color: hasUnread ? Colors.black87 : Colors.black54,
+                          fontFamily: 'monospace',
+                        ),
+                        a: TextStyle(
+                          color: hasUnread ? Colors.black87 : Colors.black54,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
+                    // Text(
+                    //   conversation.lastMessage,
+                    //   maxLines: 1,
+                    //   overflow: TextOverflow.ellipsis,
+                    //   style: TextStyle(
+                    //     fontSize: 14,
+                    //     color: hasUnread ? Colors.black87 : Colors.black54,
+                    //     fontWeight: hasUnread
+                    //         ? FontWeight.w600
+                    //         : FontWeight.normal,
+                    //   ),
+                    // ),
                   ],
                 ),
               ),
