@@ -87,6 +87,7 @@ class ChatBubble extends StatelessWidget {
   final bool isMe;
   final DateTime timestamp;
   final bool isRead;
+  final dynamic quotedMessage;
 
   const ChatBubble({
     super.key,
@@ -94,6 +95,7 @@ class ChatBubble extends StatelessWidget {
     required this.isMe,
     required this.timestamp,
     required this.isRead,
+    this.quotedMessage,
   });
 
   MarkdownStyleSheet _getMarkdownStyle(
@@ -143,7 +145,9 @@ class ChatBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.only(top: 10, left: 12, right: 12, bottom: 6),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth:
+              MediaQuery.of(context).size.width *
+              0.75, // Keeps a max width so it doesn't touch the edges
         ),
         decoration: BoxDecoration(
           color: isMe
@@ -156,46 +160,88 @@ class ChatBubble extends StatelessWidget {
             bottomRight: Radius.circular(isMe ? 4 : 16),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            MarkdownBody(
-              data: message,
-              selectable: false,
-              styleSheet: _getMarkdownStyle(
-                isMe,
-                theme.colorScheme.primary,
-                theme.colorScheme.onPrimary,
-                theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  formattedTime,
-                  style: TextStyle(
+        // IntrinsicWidth forces the container to only be as wide as its widest child
+        child: IntrinsicWidth(
+          child: Column(
+            // Stretch makes elements like the timestamp row expand to the intrinsic width boundary
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (quotedMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
                     color: isMe
-                        ? theme.colorScheme.onPrimary.withValues(alpha: 0.7)
-                        : theme.colorScheme.onSurfaceVariant,
-                    fontSize: 10,
+                        ? theme.colorScheme.onPrimary.withValues(alpha: 0.15)
+                        : theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.15,
+                          ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(
+                      left: BorderSide(
+                        color: isMe
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.primary,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    quotedMessage.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: isMe
+                          ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    isRead ? Icons.done_all : Icons.done,
-                    size: 14,
-                    color: isRead
-                        ? Colors.lightBlueAccent
-                        : theme.colorScheme.onPrimary.withValues(alpha: 0.7),
-                  ),
-                ],
-              ],
-            ),
-          ],
+              MarkdownBody(
+                data: message,
+                selectable: false,
+                styleSheet: _getMarkdownStyle(
+                  isMe,
+                  theme.colorScheme.primary,
+                  theme.colorScheme.onPrimary,
+                  theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formattedTime,
+                      style: TextStyle(
+                        color: isMe
+                            ? theme.colorScheme.onPrimary.withValues(alpha: 0.7)
+                            : theme.colorScheme.onSurfaceVariant,
+                        fontSize: 10,
+                      ),
+                    ),
+                    if (isMe) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        isRead ? Icons.done_all : Icons.done,
+                        size: 14,
+                        color: isRead
+                            ? Colors.lightBlueAccent
+                            : theme.colorScheme.onPrimary.withValues(
+                                alpha: 0.7,
+                              ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

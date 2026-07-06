@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:mobile/controllers/auth.dart';
 import 'package:mobile/pages/settings%20pages/accounts.dart';
 import 'package:mobile/pages/settings%20pages/appearance.dart';
 import 'package:mobile/pages/settings%20pages/chats_media.dart';
@@ -15,6 +16,8 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthState>().currentUser;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -58,9 +61,17 @@ class SettingsPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 40,
-                      child: Icon(Icons.person, size: 50),
+                    Hero(
+                      tag: 'User Profile',
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundImage: user?.avatarUrl != null
+                            ? NetworkImage(user!.avatarUrl!)
+                            : null,
+                        child: user?.avatarUrl == null
+                            ? const Icon(Icons.person, size: 50)
+                            : null,
+                      ),
                     ),
                     SizedBox(width: 20),
                     Column(
@@ -68,19 +79,21 @@ class SettingsPage extends StatelessWidget {
                       children: [
                         Spacer(),
                         Text(
-                          'User Name',
+                          user != null ? user.displayName : 'Profile N/A',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        // SizedBox(height: 5),
-                        Text('Activity status', style: TextStyle(fontSize: 12)),
+                        Text(
+                          user != null
+                              ? '@${user.username}'
+                              : 'Could not load profile',
+                          style: TextStyle(fontSize: 12),
+                        ),
                         Spacer(),
                       ],
                     ),
-                    Spacer(),
-                    Icon(Icons.chevron_right_rounded),
                   ],
                 ),
               ),
@@ -167,7 +180,6 @@ Widget _settingsOption({
   Widget? whereTo,
 }) {
   return InkWell(
-    // splashColor: const Color.fromARGB(255, 255, 0, 0),
     onTap: () {
       if (whereTo != null) {
         Navigator.push(

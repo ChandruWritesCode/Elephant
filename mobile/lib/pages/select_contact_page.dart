@@ -289,15 +289,15 @@ class _SelectContactPageState extends State<SelectContactPage> {
                       if (chatState.inbox.isNotEmpty)
                         ...chatState.inbox
                             .where(
-                              (thread) => !_selectedContacts.containsKey(
-                                thread.chatUserId,
-                              ),
+                              (thread) =>
+                                  !thread.isGroup &&
+                                  !_selectedContacts.containsKey(thread.id),
                             )
                             .map(
                               (thread) => _buildContactTile(
-                                id: thread.chatUserId,
-                                displayName: thread.displayName,
-                                username: thread.username,
+                                id: thread.id,
+                                displayName: thread.title,
+                                username: thread.title,
                               ),
                             ),
                     ],
@@ -390,12 +390,12 @@ class _SelectContactPageState extends State<SelectContactPage> {
                                                 context,
                                               ).pushReplacement(
                                                 MaterialPageRoute(
-                                                  builder: (context) => ChatPage(
-                                                    chatUserId: newGroup
-                                                        .id, 
-                                                    displayName: newGroup
-                                                        .name,
-                                                  ),
+                                                  builder: (context) =>
+                                                      ChatPage(
+                                                        chatUserId: newGroup.id,
+                                                        displayName:
+                                                            newGroup.name,
+                                                      ),
                                                 ),
                                               );
 

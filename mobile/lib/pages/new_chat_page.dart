@@ -147,7 +147,7 @@ class _NewChatPageState extends State<NewChatPage> {
         actions: [
           PopupMenuButton(
             itemBuilder: (context) => [
-              PopupMenuItem(child: Text("Share username by QR")),
+              const PopupMenuItem(child: Text("Share username by QR")),
             ],
           ),
         ],
@@ -264,7 +264,7 @@ class _NewChatPageState extends State<NewChatPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => SelectContactPage(),
+                              builder: (context) => const SelectContactPage(),
                             ),
                           );
                         },
@@ -291,41 +291,46 @@ class _NewChatPageState extends State<NewChatPage> {
                         ),
                       ),
                       if (chatState.inbox.isNotEmpty)
-                        ...chatState.inbox.map(
-                          (thread) => ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 4,
-                            ),
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0xFFE8E8E8),
-                              child: Icon(Icons.person, color: Colors.black54),
-                            ),
-                            title: Text(
-                              thread.displayName,
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            subtitle: Text(
-                              "@${thread.username}",
-                              style: const TextStyle(color: Colors.black45),
-                            ),
-                            onTap: () {
-                              chatState.openChat(thread.chatUserId);
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ChatPage(
-                                    chatUserId: thread.chatUserId,
-                                    displayName: thread.displayName,
+                        ...chatState.inbox
+                            .where((thread) => !thread.isGroup)
+                            .map(
+                              (thread) => ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 4,
+                                ),
+                                leading: const CircleAvatar(
+                                  backgroundColor: Color(0xFFE8E8E8),
+                                  child: Icon(
+                                    Icons.person,
+                                    color: Colors.black54,
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                        ),
+                                title: Text(
+                                  thread.title,
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "@${thread.title}",
+                                  style: const TextStyle(color: Colors.black45),
+                                ),
+                                onTap: () {
+                                  chatState.openChat(thread.id);
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChatPage(
+                                        chatUserId: thread.id,
+                                        displayName: thread.title,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                     ],
                   ),
           ),

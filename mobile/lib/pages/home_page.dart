@@ -267,9 +267,7 @@ class _HomePageState extends State<HomePage> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => AccountsSettings(),
-                        ),
+                        MaterialPageRoute(builder: (context) => SettingsPage()),
                       );
                     },
                     child: Hero(
@@ -375,21 +373,7 @@ class _HomePageState extends State<HomePage> {
                 !_isSelectionMode
                     ? PopupMenuButton<String>(
                         iconColor: theme.colorScheme.onSurface,
-                        onSelected: (String value) {
-                          switch (value) {
-                            case 'settings':
-                              context
-                                  .read<BasicProviders>()
-                                  .initNotificationsSwitch();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const SettingsPage(),
-                                ),
-                              );
-                              break;
-                          }
-                        },
+                        onSelected: (String value) {},
                         borderRadius: BorderRadius.circular(20),
                         itemBuilder: (context) => [
                           const PopupMenuItem(
@@ -400,10 +384,6 @@ class _HomePageState extends State<HomePage> {
                             value: 'read all',
                             child: Text('Read all'),
                           ),
-                          const PopupMenuItem(
-                            value: 'settings',
-                            child: Text('Settings'),
-                          ),
                         ],
                       )
                     : PopupMenuButton<String>(
@@ -413,7 +393,7 @@ class _HomePageState extends State<HomePage> {
                             case 'Select all':
                               setState(() {
                                 for (final thread in chatState.inbox) {
-                                  _selectedChatIds.add(thread.chatUserId);
+                                  _selectedChatIds.add(thread.id);
                                 }
                               });
                               break;
@@ -457,8 +437,9 @@ class _HomePageState extends State<HomePage> {
                   itemCount: chatState.inbox.length,
                   itemBuilder: (context, index) {
                     final thread = chatState.inbox[index];
+
                     final bool isSelected = _selectedChatIds.contains(
-                      thread.chatUserId,
+                      thread.id,
                     );
 
                     return CustomChatCard(
@@ -468,16 +449,16 @@ class _HomePageState extends State<HomePage> {
                       onLongPress: () {
                         if (!_isSearchOpen) {
                           setState(() {
-                            _selectedChatIds.add(thread.chatUserId);
+                            _selectedChatIds.add(thread.id);
                           });
                         }
                       },
                       onTapInSelection: () {
                         setState(() {
-                          if (_selectedChatIds.contains(thread.chatUserId)) {
-                            _selectedChatIds.remove(thread.chatUserId);
+                          if (_selectedChatIds.contains(thread.id)) {
+                            _selectedChatIds.remove(thread.id);
                           } else {
-                            _selectedChatIds.add(thread.chatUserId);
+                            _selectedChatIds.add(thread.id);
                           }
                         });
                       },

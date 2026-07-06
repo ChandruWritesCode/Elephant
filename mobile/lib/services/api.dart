@@ -86,7 +86,22 @@ class ApiService {
       },
     );
   }
-  
+
+  Future<Response> sendMessage(
+    String receiverId,
+    String content, {
+    String? replyToMessageId,
+  }) async {
+    return await _dio.post(
+      '/messages',
+      data: {
+        "receiver_id": receiverId,
+        "content": content,
+        if (replyToMessageId != null) "reply_to_message_id": replyToMessageId,
+      },
+    );
+  }
+
   Future<Response> post(
     String path, {
     dynamic data,
@@ -94,4 +109,5 @@ class ApiService {
   }) async {
     return await _dio.post(path, data: data, queryParameters: queryParameters);
   }
+
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile/models/user.dart';
 import '../services/auth.dart';
 
 class AuthState extends ChangeNotifier {
@@ -12,9 +13,13 @@ class AuthState extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  UserModel? _currentUser;
+
   String? get token => _token;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  UserModel? get currentUser => _currentUser;
 
   static VoidCallback? onGlobalUnauthorized;
 
@@ -22,8 +27,29 @@ class AuthState extends ChangeNotifier {
     onGlobalUnauthorized = logoutSilently;
   }
 
+  Future<void> loadUserProfile() async {
+    if (_token == null) return;
+
+    try {
+      final res = await _authService.getCurrentUser(_token!);
+      final data = res.data;
+
+      final userData = data['data'] ?? data['user'] ?? data;
+
+      _currentUser = UserModel.fromJson(userData);
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Failed to load user profile: $e");
+    }
+  }
+
   Future<String?> checkAutoLogin() async {
     _token = await _storage.read(key: "access_token");
+
+    if (_token != null) {
+      await loadUserProfile();
+    }
+
     notifyListeners();
     return _token;
   }
@@ -53,6 +79,9 @@ class AuthState extends ChangeNotifier {
             tokens['access_token'],
             tokens['refresh_token'],
           );
+
+          await loadUserProfile();
+
           _isLoading = false;
           notifyListeners();
           return true;
@@ -100,6 +129,9 @@ class AuthState extends ChangeNotifier {
             tokens['access_token'],
             tokens['refresh_token'],
           );
+
+          await loadUserProfile();
+
           _isLoading = false;
           notifyListeners();
           return true;
@@ -119,6 +151,7 @@ class AuthState extends ChangeNotifier {
 
   Future<void> logout() async {
     _token = null;
+    _currentUser = null;
     await _authService.logout();
     notifyListeners();
   }
@@ -126,6 +159,7 @@ class AuthState extends ChangeNotifier {
   void logoutSilently() {
     if (_token != null) {
       _token = null;
+      _currentUser = null;
       _authService.logout();
       notifyListeners();
     }
