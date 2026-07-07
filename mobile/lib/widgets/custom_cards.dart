@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:simple_rich_text/simple_rich_text.dart';
-// Make sure to import your new unified model here!
 import '../models/inbox_item.dart';
 import '../pages/chat_page.dart';
-import '../controllers/chat.dart';
 
 class CustomChatCard extends StatelessWidget {
-  final InboxItem conversation; // Changed from Conversation to InboxItem
+  final InboxItem conversation;
   final bool isSelected;
   final bool isSelectionMode;
   final GestureLongPressCallback? onLongPress;
@@ -39,7 +36,6 @@ class CustomChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Changed lastMessageTime to timestamp (from InboxItem model)
     final String timeLabel = _formatTimestamp(conversation.timestamp);
     final bool hasUnread = conversation.unreadCount > 0;
 
@@ -53,22 +49,13 @@ class CustomChatCard extends StatelessWidget {
           if (isSelectionMode) {
             onTapInSelection();
           } else {
-            final controller = context.read<ChatController>();
-            print(
-              "Tapping on conversation. Target ID is: '${conversation.id}'",
-            );
-            // Changed chatUserId to id
-            controller.openChat(conversation.id);
-
             if (context.mounted) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChatPage(
-                    // You might need to update ChatPage to accept a generic 'chatId' and 'isGroup' boolean eventually
                     chatUserId: conversation.id,
-                    displayName:
-                        conversation.title, // Changed displayName to title
+                    displayName: conversation.title,
                   ),
                 ),
               );
@@ -88,7 +75,6 @@ class CustomChatCard extends StatelessWidget {
                     CircleAvatar(
                       radius: 26,
                       backgroundColor: const Color(0xFFD6E4FF),
-                      // Dynamically change icon based on isGroup
                       child: Icon(
                         conversation.isGroup ? Icons.group : Icons.person,
                         color: const Color(0xFF1890FF),
@@ -123,7 +109,7 @@ class CustomChatCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      conversation.title, // Changed displayName to title
+                      conversation.title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

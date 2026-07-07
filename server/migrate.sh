@@ -22,7 +22,7 @@ if [ "$migration_exists" = 1 ]; then
         already_applied=$(psql "${DB_URL}" -tAc \
             "SELECT COUNT(*) FROM schema_migrations WHERE filename = '${filename}'")
         
-        if [ "$already_applied" = "0" ]; th en
+        if [ "$already_applied" = "0" ]; then
             echo "Applying: ${filename}"
             psql "${DB_URL}" -f "$migration"
             psql "${DB_URL}" -c "INSERT INTO schema_migrations (filename) VALUES ('${filename}')"

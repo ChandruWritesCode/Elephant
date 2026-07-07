@@ -67,6 +67,11 @@ class ApiService {
     return await _dio.get("/messages/conversations");
   }
 
+  Future<Response> getGroups() async {
+    return await _dio.get("/groups");
+  }
+
+
   Future<Response> getChatHistory(String partnerId, {String? before}) async {
     final Map<String, dynamic> params = {"with": partnerId, "limit": 40};
     if (before != null) params["before"] = before;

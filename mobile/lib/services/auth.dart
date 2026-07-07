@@ -78,7 +78,7 @@ class AuthService {
 
   Future<Response> getCurrentUser(String token) async {
     return await _dio.get(
-      '/api/users/me',
+      '/users/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
   }

@@ -25,11 +25,19 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   final Set<int> _selectedIndices = {};
   dynamic _replyingToMessage;
 
+  int _previousMessageCount = 0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_scrollListener);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ChatController>().openChat(widget.chatUserId);
+      }
+    });
   }
 
   @override
@@ -61,8 +69,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     if (!_scrollController.hasClients) return;
 
     final offset = _scrollController.offset;
-    _isNearBottom = offset <= 100;
-    final isScrolledUp = offset > 100;
+    _isNearBottom = offset <= 300;
+    final isScrolledUp = offset > 300;
 
     if (isScrolledUp != _showScrollToBottom) {
       setState(() {
@@ -88,7 +96,20 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   void _sendMessage(String text) {
     if (text.trim().isEmpty) return;
 
-    context.read<ChatController>().sendTextMessage(text);
+    String? replyName;
+    if (_replyingToMessage != null) {
+      final String pId = _replyingToMessage.senderId.trim().toLowerCase();
+      final bool isMe =
+          pId == 'me' ||
+          (pId.isNotEmpty && pId != widget.chatUserId.trim().toLowerCase());
+      replyName = isMe ? "You" : widget.displayName;
+    }
+
+    context.read<ChatController>().sendTextMessage(
+      text,
+      replyingTo: _replyingToMessage,
+      replyingToName: replyName,
+    );
 
     setState(() {
       _replyingToMessage = null;
@@ -132,7 +153,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   UserStatus _getPresenceStatusText(ChatController state) {
-    if (state.isPeerTyping) return UserStatus.typing;
     return state.isPeerOnline ? UserStatus.online : UserStatus.offline;
   }
 
@@ -157,6 +177,17 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     final activeChat = chatState.activeChat;
     final isSelectionMode = _selectedIndices.isNotEmpty;
     final theme = Theme.of(context);
+
+    if (activeChat.length != _previousMessageCount) {
+      final isNewMessage = activeChat.length > _previousMessageCount;
+      _previousMessageCount = activeChat.length;
+
+      if (isNewMessage) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _scrollToBottom(animated: true);
+        });
+      }
+    }
 
     return PopScope(
       canPop: !isSelectionMode,
@@ -246,7 +277,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                   ),
                 );
               },
-              child: chatState.isChatHistoryLoading
+              child: chatState.isChatHistoryLoading && activeChat.isEmpty
                   ? Center(
                       key: const ValueKey('loading'),
                       child: CircularProgressIndicator(
@@ -280,7 +311,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         left: 16,
                         right: 16,
                       ),
-                      itemCount: activeChat.length + 1,
+                      itemCount:
+                          activeChat.length + (chatState.isPeerTyping ? 2 : 1),
                       itemBuilder: (context, index) {
                         if (index == 0) {
                           return AnimatedSize(
@@ -292,7 +324,44 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                           );
                         }
 
-                        final int msgIndex = index - 1;
+                        if (chatState.isPeerTyping && index == 1) {
+                          return _AnimatedMessageItem(
+                            key: const ValueKey('typing_indicator'),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.only(
+                                  bottom: 8,
+                                  top: 4,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(16)
+                                      .copyWith(
+                                        bottomLeft: const Radius.circular(0),
+                                      ),
+                                ),
+                                child: Text(
+                                  "Typing...",
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontStyle: FontStyle.italic,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final int msgIndex =
+                            index - (chatState.isPeerTyping ? 2 : 1);
                         final int realIndex = activeChat.length - 1 - msgIndex;
                         final msg = activeChat[realIndex];
                         final bool isSelected = _selectedIndices.contains(
@@ -321,8 +390,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                 cleanSenderId != cleanPeerId);
 
                         return _AnimatedMessageItem(
-                          // Key ensures animation runs only once per unique message
-                          key: ValueKey(msg.createdAt.toIso8601String()),
+                          key: ValueKey(
+                            msg.id?.toString() ??
+                                msg.createdAt.millisecondsSinceEpoch.toString(),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -362,7 +433,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                     _toggleSelection(realIndex);
                                   }
                                 },
-                                // Scale animation on selection
                                 child: AnimatedScale(
                                   scale: isSelected ? 0.95 : 1.0,
                                   duration: const Duration(milliseconds: 200),
@@ -519,7 +589,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 }
 
-// --- NEW WIDGET: Ensures items fade/slide exactly once when building ---
 class _AnimatedMessageItem extends StatefulWidget {
   final Widget child;
 

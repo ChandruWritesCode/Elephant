@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile/pages/select_contact_page.dart';
+import 'package:mobile/pages/settings_page.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'chat_page.dart';
@@ -146,8 +147,19 @@ class _NewChatPageState extends State<NewChatPage> {
         ),
         actions: [
           PopupMenuButton(
+            onSelected: (value) {
+              switch (value) {
+                case 'qr':
+                  showUserCard(context);
+                  break;
+                default:
+              }
+            },
             itemBuilder: (context) => [
-              const PopupMenuItem(child: Text("Share username by QR")),
+              const PopupMenuItem(
+                value: 'qr',
+                child: Text("Share username by QR"),
+              ),
             ],
           ),
         ],
@@ -314,7 +326,7 @@ class _NewChatPageState extends State<NewChatPage> {
                                   ),
                                 ),
                                 subtitle: Text(
-                                  "@${thread.title}",
+                                  "@${thread.username}",
                                   style: const TextStyle(color: Colors.black45),
                                 ),
                                 onTap: () {

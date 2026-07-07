@@ -1,11 +1,13 @@
 class QuotedMessage {
   final String id;
   final String senderId;
+  final String senderDisplayName;
   final String content;
 
   QuotedMessage({
     required this.id,
     required this.senderId,
+    required this.senderDisplayName,
     required this.content,
   });
 
@@ -13,6 +15,8 @@ class QuotedMessage {
     return QuotedMessage(
       id: json['id'] ?? '',
       senderId: json['sender_id'] ?? '',
+      senderDisplayName:
+          json['sender_display_name'] ?? json['sender_name'] ?? '',
       content: json['content'] ?? '',
     );
   }
@@ -20,6 +24,7 @@ class QuotedMessage {
   Map<String, dynamic> toJson() => {
     'id': id,
     'sender_id': senderId,
+    'sender_display_name': senderDisplayName,
     'content': content,
   };
 }
@@ -47,15 +52,13 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
-      id: json['id'] ?? json['message_id'] ?? '',
+      id: json['client_message_id'] ?? json['message_id'] ?? json['id'] ?? '',
       senderId: json['sender_id'] ?? '',
       receiverId: json['receiver_id'] ?? '',
       content: json['content'] ?? '',
-      createdAt: DateTime.parse(
-        json['created_at'] ??
-            json['timestamp'] ??
-            DateTime.now().toIso8601String(),
-      ).toLocal(),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at']).toLocal()
+          : DateTime.now(),
       isRead: json['is_read'] ?? false,
       replyToMessageId: json['reply_to_message_id'],
       quotedMessage: json['quoted_message'] != null
@@ -64,27 +67,7 @@ class Message {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    final map = <String, dynamic>{
-      'id': id,
-      'sender_id': senderId,
-      'receiver_id': receiverId,
-      'content': content,
-      'created_at': createdAt.toIso8601String(),
-      'is_read': isRead,
-    };
-
-    if (replyToMessageId != null) map['reply_to_message_id'] = replyToMessageId;
-    if (quotedMessage != null) map['quoted_message'] = quotedMessage!.toJson();
-
-    return map;
-  }
-
-  Message copyWith({
-    bool? isRead,
-    String? replyToMessageId,
-    QuotedMessage? quotedMessage,
-  }) {
+  Message copyWith({bool? isRead}) {
     return Message(
       id: id,
       senderId: senderId,
@@ -92,8 +75,8 @@ class Message {
       content: content,
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
-      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
-      quotedMessage: quotedMessage ?? this.quotedMessage,
+      replyToMessageId: replyToMessageId,
+      quotedMessage: quotedMessage,
     );
   }
 }

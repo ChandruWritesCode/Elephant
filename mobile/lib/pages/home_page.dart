@@ -50,7 +50,6 @@ class _HomePageState extends State<HomePage> {
       final token = await authService.getToken();
       if (token != null) {
         await chatController.initSession(token);
-        await chatController.loadInbox();
       }
     });
   }

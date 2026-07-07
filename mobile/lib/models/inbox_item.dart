@@ -4,6 +4,7 @@ import 'package:mobile/models/group.dart';
 class InboxItem {
   final String id;
   final String title;
+  final String? username;
   final String lastMessage;
   final DateTime timestamp;
   final bool isGroup;
@@ -18,12 +19,36 @@ class InboxItem {
     required this.isGroup,
     this.isRead = true,
     this.unreadCount = 0,
+    this.username,
   });
+
+  InboxItem copyWith({
+    String? id,
+    String? title,
+    String? lastMessage,
+    String? username,
+    DateTime? timestamp,
+    bool? isGroup,
+    bool? isRead,
+    int? unreadCount,
+  }) {
+    return InboxItem(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      title: title ?? this.title,
+      lastMessage: lastMessage ?? this.lastMessage,
+      timestamp: timestamp ?? this.timestamp,
+      isGroup: isGroup ?? this.isGroup,
+      isRead: isRead ?? this.isRead,
+      unreadCount: unreadCount ?? this.unreadCount,
+    );
+  }
 
   factory InboxItem.fromConversation(Conversation conv) {
     return InboxItem(
       id: conv.chatUserId,
-      title: conv.username,
+      username: conv.username,
+      title: conv.displayName,
       lastMessage: conv.lastMessage,
       timestamp: conv.lastMessageTime,
       isGroup: false,
