@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:simple_rich_text/simple_rich_text.dart';
-import '../models/conversation.dart';
+import '../models/inbox_item.dart';
 import '../pages/chat_page.dart';
-import '../controllers/chat.dart';
 
 class CustomChatCard extends StatelessWidget {
-  final Conversation conversation;
+  final InboxItem conversation;
   final bool isSelected;
   final bool isSelectionMode;
   final GestureLongPressCallback? onLongPress;
@@ -38,7 +36,7 @@ class CustomChatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String timeLabel = _formatTimestamp(conversation.lastMessageTime);
+    final String timeLabel = _formatTimestamp(conversation.timestamp);
     final bool hasUnread = conversation.unreadCount > 0;
 
     return Material(
@@ -51,16 +49,13 @@ class CustomChatCard extends StatelessWidget {
           if (isSelectionMode) {
             onTapInSelection();
           } else {
-            final controller = context.read<ChatController>();
-            await controller.openChat(conversation.chatUserId);
-
             if (context.mounted) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChatPage(
-                    chatUserId: conversation.chatUserId,
-                    displayName: conversation.displayName,
+                    chatUserId: conversation.id,
+                    displayName: conversation.title,
                   ),
                 ),
               );
@@ -77,10 +72,13 @@ class CustomChatCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 26,
-                      backgroundColor: Color(0xFFD6E4FF),
-                      child: Icon(Icons.person, color: Color(0xFF1890FF)),
+                      backgroundColor: const Color(0xFFD6E4FF),
+                      child: Icon(
+                        conversation.isGroup ? Icons.group : Icons.person,
+                        color: const Color(0xFF1890FF),
+                      ),
                     ),
                     Positioned(
                       right: -2,
@@ -111,7 +109,7 @@ class CustomChatCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      conversation.displayName,
+                      conversation.title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -119,62 +117,8 @@ class CustomChatCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // SizedBox(
-                    //   height: 25,
-                    //   width: double.infinity,
-                    //   child: ClipRect(
-                    //     child: MarkdownBody(
-                    //       data: conversation.lastMessage,
-                    //       selectable: false,
-                    //       shrinkWrap: true,
-                    //       softLineBreak: true,
-                    //       styleSheet: MarkdownStyleSheet(
-                    //         p: TextStyle(
-                    //           color: hasUnread
-                    //               ? Colors.black87
-                    //               : Colors.black54,
-                    //           fontSize: 15,
-                    //         ),
-                    //         strong: TextStyle(
-                    //           color: hasUnread
-                    //               ? Colors.black87
-                    //               : const Color.fromARGB(171, 0, 0, 0),
-                    //           fontWeight: FontWeight.bold,
-                    //         ),
-                    //         em: TextStyle(
-                    //           color: hasUnread
-                    //               ? Colors.black87
-                    //               : Colors.black54,
-                    //           fontStyle: FontStyle.italic,
-                    //         ),
-                    //         del: TextStyle(
-                    //           color: hasUnread
-                    //               ? Colors.black87
-                    //               : Colors.black54,
-                    //           decoration: TextDecoration.lineThrough,
-                    //         ),
-                    //         code: TextStyle(
-                    //           color: hasUnread
-                    //               ? Colors.black87
-                    //               : Colors.black54,
-                    //           fontFamily: 'monospace',
-                    //         ),
-                    //         a: TextStyle(
-                    //           color: hasUnread
-                    //               ? Colors.black87
-                    //               : Colors.black54,
-                    //           decoration: TextDecoration.underline,
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-                    // Example using simple_rich_text
                     SimpleRichText(
-                      conversation.lastMessage.replaceAll(
-                        '\n',
-                        ' ',
-                      ),
+                      conversation.lastMessage.replaceAll('\n', ' '),
                       maxLines: 1,
                       textOverflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -182,18 +126,6 @@ class CustomChatCard extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    // Text(
-                    //   conversation.lastMessage,
-                    //   maxLines: 1,
-                    //   overflow: TextOverflow.ellipsis,
-                    //   style: TextStyle(
-                    //     fontSize: 14,
-                    //     color: hasUnread ? Colors.black87 : Colors.black54,
-                    //     fontWeight: hasUnread
-                    //         ? FontWeight.w600
-                    //         : FontWeight.normal,
-                    //   ),
-                    // ),
                   ],
                 ),
               ),

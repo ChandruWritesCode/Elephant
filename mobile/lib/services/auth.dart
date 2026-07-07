@@ -75,4 +75,11 @@ class AuthService {
       data: {"refresh_token": refreshToken},
     );
   }
+
+  Future<Response> getCurrentUser(String token) async {
+    return await _dio.get(
+      '/users/me',
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+  }
 }

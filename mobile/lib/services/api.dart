@@ -67,6 +67,11 @@ class ApiService {
     return await _dio.get("/messages/conversations");
   }
 
+  Future<Response> getGroups() async {
+    return await _dio.get("/groups");
+  }
+
+
   Future<Response> getChatHistory(String partnerId, {String? before}) async {
     final Map<String, dynamic> params = {"with": partnerId, "limit": 40};
     if (before != null) params["before"] = before;
@@ -86,7 +91,22 @@ class ApiService {
       },
     );
   }
-  
+
+  Future<Response> sendMessage(
+    String receiverId,
+    String content, {
+    String? replyToMessageId,
+  }) async {
+    return await _dio.post(
+      '/messages',
+      data: {
+        "receiver_id": receiverId,
+        "content": content,
+        if (replyToMessageId != null) "reply_to_message_id": replyToMessageId,
+      },
+    );
+  }
+
   Future<Response> post(
     String path, {
     dynamic data,
@@ -94,4 +114,5 @@ class ApiService {
   }) async {
     return await _dio.post(path, data: data, queryParameters: queryParameters);
   }
+
 }
