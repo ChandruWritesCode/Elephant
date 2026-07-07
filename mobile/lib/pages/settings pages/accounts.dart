@@ -23,10 +23,10 @@ class AccountsSettings extends StatelessWidget {
           const SizedBox(
             width: double.infinity,
             height: 150,
-            child: Hero(
-              tag: 'User Profile',
-              child: Padding(
-                padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 10.0),
+            child: Padding(
+              padding: EdgeInsets.only(left: 16.0, top: 10.0, bottom: 10.0),
+              child: Hero(
+                tag: 'User Profile',
                 child: CircleAvatar(
                   backgroundColor: Color(0xFFD6E4FF),
                   child: Icon(Icons.person, color: Color(0xFF1890FF), size: 40),
