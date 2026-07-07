@@ -33,7 +33,7 @@ class GroupController extends ChangeNotifier {
 
       final createResponse = await _api.post(
         '/groups',
-        data: {"name": groupName},
+        data: {"name": groupName.trim()},
       );
 
       if (createResponse.statusCode == 200 ||

@@ -20,12 +20,22 @@ class Conversation {
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
+    final String extractedId =
+        json['chat_user_id'] ??
+        json['user_id'] ??
+        json['id'] ??
+        json['partner_id'] ??
+        '';
+
     return Conversation(
-      chatUserId: json['chat_user_id'] ?? '',
-      username: json['username'] ?? '',
+      chatUserId: extractedId,
+      username:
+          json['name'] ?? json['username'] ?? json['user_name'] ?? 'Unknown',
       displayName: json['display_name'] ?? '',
       lastMessage: json['last_message'] ?? '',
-      lastMessageTime: DateTime.parse(json['last_message_time'] ?? DateTime.now().toIso8601String()).toLocal(),
+      lastMessageTime: DateTime.parse(
+        json['last_message_time'] ?? DateTime.now().toIso8601String(),
+      ).toLocal(),
       senderId: json['sender_id'] ?? '',
       isRead: json['is_read'] ?? false,
       unreadCount: json['unread_count'] ?? 0,

@@ -63,4 +63,5 @@ class WebSocketService {
     _channel = null;
     debugPrint("WebSocket Pipeline Terminated Cleanly.");
   }
+
 }
