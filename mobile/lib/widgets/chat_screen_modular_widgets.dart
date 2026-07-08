@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/models/message.dart';
-import 'package:mobile/pages/chat_details_page.dart';
 
 enum UserStatus { offline, online }
 
@@ -13,14 +12,14 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String name;
   final UserStatus? status;
   final bool isGroup;
-  final String chatId;
+  final GestureTapCallback? onTitleTap;
 
   const GlassAppBar({
     super.key,
     required this.name,
     required this.status,
     required this.isGroup,
-    required this.chatId,
+    this.onTitleTap,
   });
 
   @override
@@ -39,19 +38,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
             onPressed: () => Navigator.pop(context),
           ),
           title: GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatDetailsPage(
-                    isGroup: isGroup,
-                    chatId: chatId,
-                    chatName: name,
-                    chatImageUrl: "",
-                  ),
-                ),
-              );
-            },
+            onTap: onTitleTap,
             child: Row(
               children: [
                 Hero(
@@ -490,193 +477,6 @@ class _ChatInputAreaState extends State<ChatInputArea> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AnimatedMessageItem extends StatefulWidget {
-  final Widget child;
-
-  const _AnimatedMessageItem({required this.child});
-
-  @override
-  State<_AnimatedMessageItem> createState() => _AnimatedMessageItemState();
-}
-
-class _AnimatedMessageItemState extends State<_AnimatedMessageItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
-      ),
-    );
-  }
-}
-
-class SwipeToReply extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onReply;
-  final bool isMe;
-
-  const SwipeToReply({
-    super.key,
-    required this.child,
-    required this.onReply,
-    required this.isMe,
-  });
-
-  @override
-  State<SwipeToReply> createState() => _SwipeToReplyState();
-}
-
-class _SwipeToReplyState extends State<SwipeToReply>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  double _dragOffset = 0.0;
-  bool _vibrated = false;
-  final double _replyThreshold = 60.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
-    _animation = Tween<double>(
-      begin: 0.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _controller.addListener(() {
-      setState(() {
-        _dragOffset = _animation.value;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragOffset += details.primaryDelta!;
-
-      if (widget.isMe) {
-        if (_dragOffset > 0) _dragOffset = 0;
-        if (_dragOffset < -_replyThreshold) {
-          _dragOffset =
-              -_replyThreshold + ((_dragOffset + _replyThreshold) * 0.15);
-        }
-      } else {
-        if (_dragOffset < 0) _dragOffset = 0;
-        if (_dragOffset > _replyThreshold) {
-          _dragOffset =
-              _replyThreshold + ((_dragOffset - _replyThreshold) * 0.15);
-        }
-      }
-
-      if (_dragOffset.abs() >= _replyThreshold && !_vibrated) {
-        HapticFeedback.lightImpact();
-        _vibrated = true;
-      } else if (_dragOffset.abs() < _replyThreshold) {
-        _vibrated = false;
-      }
-    });
-  }
-
-  void _onDragEnd(DragEndDetails details) {
-    if (_dragOffset.abs() >= _replyThreshold) {
-      widget.onReply();
-    }
-    _vibrated = false;
-
-    _animation = Tween<double>(
-      begin: _dragOffset,
-      end: 0.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-    _controller.forward(from: 0.0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double iconOpacity = (_dragOffset.abs() / _replyThreshold).clamp(
-      0.0,
-      1.0,
-    );
-
-    return GestureDetector(
-      onHorizontalDragUpdate: _onDragUpdate,
-      onHorizontalDragEnd: _onDragEnd,
-      behavior: HitTestBehavior.opaque,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: widget.isMe ? null : 20,
-            right: widget.isMe ? 20 : null,
-            child: Opacity(
-              opacity: iconOpacity,
-              child: Transform.scale(
-                scale: 0.5 + (0.5 * iconOpacity),
-                child: Icon(
-                  Icons.reply,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 28,
-                ),
-              ),
-            ),
-          ),
-          Transform.translate(
-            offset: Offset(_dragOffset, 0),
-            child: widget.child,
-          ),
-        ],
       ),
     );
   }
