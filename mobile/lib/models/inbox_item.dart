@@ -10,6 +10,7 @@ class InboxItem {
   final bool isGroup;
   final bool isRead;
   final int unreadCount;
+  final String? lastMessageSender;
 
   InboxItem({
     required this.id,
@@ -20,6 +21,7 @@ class InboxItem {
     this.isRead = true,
     this.unreadCount = 0,
     this.username,
+    this.lastMessageSender,
   });
 
   InboxItem copyWith({
@@ -61,11 +63,12 @@ class InboxItem {
     return InboxItem(
       id: group.id,
       title: group.name,
-      lastMessage: 'Tap to view group',
-      timestamp: group.createdAt,
+      timestamp: group.lastMessageAt,
       isGroup: true,
       isRead: true,
       unreadCount: 0,
+      lastMessageSender: group.lastMessageSender,
+      lastMessage: group.lastMessage,
     );
   }
 }

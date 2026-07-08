@@ -1,13 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:mobile/models/user.dart';
 import '../services/auth.dart';
 
 class AuthState extends ChangeNotifier {
   final AuthService _authService = AuthService();
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   String? _token;
   bool _isLoading = false;
@@ -44,7 +42,7 @@ class AuthState extends ChangeNotifier {
   }
 
   Future<String?> checkAutoLogin() async {
-    _token = await _storage.read(key: "access_token");
+    _token = await _authService.getToken();
 
     if (_token != null) {
       await loadUserProfile();

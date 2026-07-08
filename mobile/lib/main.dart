@@ -5,12 +5,15 @@ import 'package:provider/provider.dart';
 import 'core/constants.dart';
 import 'controllers/auth.dart';
 import 'controllers/chat.dart';
+import 'services/auth.dart';
 import 'pages/login.dart';
 import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Env.init();
+  await AuthService().initTokens();
+
   runApp(
     MultiProvider(
       providers: [
@@ -65,7 +68,7 @@ class _SessionGatewayState extends State<SessionGateway> {
 
     if (token != null && mounted) {
       _lastInitializedToken = token;
-      context.read<ChatController>().initSession(token);
+      context.read<ChatController>().initSession();
     }
 
     if (mounted) {
@@ -91,7 +94,7 @@ class _SessionGatewayState extends State<SessionGateway> {
     if (authState.token != null && authState.token != _lastInitializedToken) {
       _lastInitializedToken = authState.token;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<ChatController>().initSession(authState.token!);
+        context.read<ChatController>().initSession();
       });
     }
 

@@ -76,4 +76,49 @@ class GroupController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> addMemberToGroup(String groupId, String userId) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final response = await _api.post(
+        '/groups/$groupId/members',
+        data: {"user_id": userId},
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+      return false;
+    } on DioException catch (e) {
+      debugPrint("Add Member Error: ${e.response?.data}");
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Inside GroupController
+
+  Future<bool> removeMemberFromGroup(String groupId, String userId) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final response = await _api.delete('/groups/$groupId/members/$userId');
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } on DioException catch (e) {
+      debugPrint("Remove Member Error: ${e.response?.data}");
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

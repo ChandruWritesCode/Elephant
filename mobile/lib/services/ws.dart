@@ -15,42 +15,74 @@ class WebSocketService {
     try {
       final wsUrl = Uri.parse("${Env.wsBaseUrl}?token=$token");
       _channel = WebSocketChannel.connect(wsUrl);
+
+      await _channel!.ready;
+
       _isConnected = true;
       debugPrint("WebSocket Pipeline Connected straight to: ${Env.wsBaseUrl}");
     } catch (e) {
       _isConnected = false;
-      debugPrint("WebSocket connection failure: $e");
+      debugPrint("WebSocket connection failure (Handshake rejected): $e");
     }
   }
 
   void emit(Map<String, dynamic> payload) {
     if (!_isConnected) return;
+    debugPrint("Sending Payload to WS: ${jsonEncode(payload)}");
     _channel?.sink.add(jsonEncode(payload));
   }
 
   void sendChat({
     required String messageId,
-    required String targetId,
+    required String receiverId,
     required String content,
+    String? replyToMessageId,
   }) {
     emit({
       "type": "chat",
       "message_id": messageId,
-      "receiver_id": targetId,
+        "receiver_id": receiverId, 
       "content": content,
+      "reply_to_message_id": replyToMessageId,
     });
   }
 
-  void sendTyping({required String targetId, required bool isTyping}) {
+  void sendGroupChat({
+    required String messageId,
+    required String groupId,
+    required String content,
+    String? replyToMessageId,
+    required String senderId,
+  }) {
+    emit({
+      "type": "chat",
+      "message_id": messageId,
+      "group_id": groupId,
+      "content": content,
+      "reply_to_message_id": replyToMessageId,
+      "sender_id": senderId,
+    });
+  }
+
+  void sendTyping({
+    String? receiverId,
+    String? groupId,
+    required bool isTyping,
+  }) {
     emit({
       "type": "typing",
-      "receiver_id": targetId,
+      if (receiverId != null) "receiver_id": receiverId,
+      if (groupId != null) "group_id": groupId,
       "content": isTyping.toString(),
     });
   }
 
-  void sendReadReceipt({required String targetId}) {
-    emit({"type": "read_receipt", "receiver_id": targetId});
+  void sendReadReceipt({String? receiverId, String? groupId}) {
+    emit({
+      "type": "read_receipt",
+      if (receiverId != null) "receiver_id": receiverId,
+      if (groupId != null) "group_id": groupId,
+    });
   }
 
   void sendRequestStatus({required String targetId}) {
@@ -63,5 +95,4 @@ class WebSocketService {
     _channel = null;
     debugPrint("WebSocket Pipeline Terminated Cleanly.");
   }
-
 }
