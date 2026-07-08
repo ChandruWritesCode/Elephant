@@ -1,8 +1,12 @@
 package controllers
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -137,6 +141,7 @@ func HandleOAuthRedirect(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   300,
 	}
 	http.SetCookie(w, cookie)
@@ -183,8 +188,21 @@ func HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			_ = userRepo.LinkProviderAccount(r.Context(), u.ID, provider, profile.ID)
 		} else {
-			fallbackUsername := strings.Split(profile.Email, "@")[0]
-			u, err = userRepo.CreateOAuthUser(r.Context(), fallbackUsername, profile.Email, profile.Name, provider, profile.ID)
+			emailHandle := strings.Split(profile.Email, "@")[0]
+			baseUsername := cleanAlphanumeric(emailHandle)
+
+			var username string
+			for {
+				randomDigits := generateRandom4Digits()
+				username = fmt.Sprintf("%s.%s", baseUsername, randomDigits)
+
+				exists, err := userRepo.UsernameExists(r.Context(), username)
+				if err == nil && !exists {
+					break
+				}
+			}
+
+			u, err = userRepo.CreateOAuthUser(r.Context(), username, profile.Email, profile.Name, provider, profile.ID)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to allocate user credentials"})
@@ -211,4 +229,21 @@ func HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 			"tokens": tokens,
 		},
 	})
+}
+
+func cleanAlphanumeric(s string) string {
+	reg := regexp.MustCompile("[^a-zA-Z0-9]")
+	processed := reg.ReplaceAllString(s, "")
+	if processed == "" {
+		return "user"
+	}
+	return processed
+}
+
+func generateRandom4Digits() string {
+	n, err := rand.Int(rand.Reader, big.NewInt(10000))
+	if err != nil {
+		return "1729"
+	}
+	return fmt.Sprintf("%04d", n.Int64())
 }
