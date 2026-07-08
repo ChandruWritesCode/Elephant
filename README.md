@@ -102,27 +102,6 @@ go run main.go
  
 Make sure PostgreSQL is running and reachable using the values in your `.env` file (`POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`).
  
-### Running database migrations
- 
-```bash
-cd server
-psql "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB" \
-for migration in /app/migrations/*_up.sql; do
-    filename=$(basename "$migration")
-    already_applied=$(psql "${DB_URL}" -tAc \
-        "SELECT COUNT(*) FROM schema_migrations WHERE filename = '${filename}'")
-    if [ "$already_applied" = "0" ]; then
-        echo "Applying ${filename}..."
-        psql "${DB_URL}" -f "$migration"
-        psql "${DB_URL}" -c \
-            "INSERT INTO schema_migrations (filename) VALUES ('${filename}')"
-        echo "${filename} applied."
-    else
-        echo "${filename} already applied, skipping."
-    fi
-done
-```
- 
 ### Running the mobile app
  
 ```bash
