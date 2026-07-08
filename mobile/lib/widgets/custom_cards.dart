@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/controllers/auth.dart';
+import 'package:mobile/controllers/chat.dart';
+import 'package:provider/provider.dart';
 import 'package:simple_rich_text/simple_rich_text.dart';
 import '../models/inbox_item.dart';
 import '../pages/chat_page.dart';
@@ -38,6 +41,19 @@ class CustomChatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String timeLabel = _formatTimestamp(conversation.timestamp);
     final bool hasUnread = conversation.unreadCount > 0;
+    final chatState = context.watch<ChatController>();
+
+    final currentUserId = context.read<AuthState>().currentUser?.id;
+
+    String? senderName;
+    if (conversation.isGroup && conversation.lastMessageSender != null) {
+      if (conversation.lastMessageSender == currentUserId) {
+        senderName = "You";
+      } else {
+        senderName =
+            chatState.userCache[conversation.lastMessageSender!] ?? "Member";
+      }
+    }
 
     return Material(
       color: isSelected
@@ -56,6 +72,7 @@ class CustomChatCard extends StatelessWidget {
                   builder: (_) => ChatPage(
                     chatUserId: conversation.id,
                     displayName: conversation.title,
+                    isGroup: conversation.isGroup,
                   ),
                 ),
               );
@@ -118,7 +135,9 @@ class CustomChatCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     SimpleRichText(
-                      conversation.lastMessage.replaceAll('\n', ' '),
+                      senderName != null
+                          ? "*$senderName:* ${conversation.lastMessage.replaceAll('\n', ' ')}"
+                          : conversation.lastMessage.replaceAll('\n', ' '),
                       maxLines: 1,
                       textOverflow: TextOverflow.ellipsis,
                       style: TextStyle(

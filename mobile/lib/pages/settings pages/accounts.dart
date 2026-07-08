@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/controllers/auth.dart';
-import 'package:mobile/providers/basic_providers.dart';
+import 'package:mobile/controllers/chat.dart';
 import 'package:mobile/main.dart';
 import 'package:provider/provider.dart';
 
@@ -138,9 +138,8 @@ class AccountsSettings extends StatelessWidget {
               backgroundColor: WidgetStatePropertyAll(Colors.redAccent),
             ),
             onPressed: () async {
+              context.read<ChatController>().clearSessionData();
               await context.read<AuthState>().logout();
-              await context.read<BasicProviders>().logOutSave();
-
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,

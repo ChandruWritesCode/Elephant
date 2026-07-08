@@ -2,9 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:mobile/controllers/chat.dart';
-import 'package:mobile/pages/settings%20pages/accounts.dart';
 import 'package:mobile/pages/settings_page.dart';
-import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/services/auth.dart';
 import 'package:mobile/widgets/custom_cards.dart';
 import 'package:provider/provider.dart';
@@ -46,10 +44,14 @@ class _HomePageState extends State<HomePage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final chatController = context.read<ChatController>();
-      final authService = AuthService();
-      final token = await authService.getToken();
+
+      final token = await AuthService().getToken();
+
+      if (!mounted) return;
+
       if (token != null) {
-        await chatController.initSession(token);
+        await chatController.initSession();
+        chatController.loadInbox();
       }
     });
   }

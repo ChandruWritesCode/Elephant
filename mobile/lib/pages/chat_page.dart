@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/controllers/auth.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/widgets/chat_screen_modular_widgets.dart';
 import 'package:mobile/controllers/chat.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class ChatPage extends StatefulWidget {
   final String chatUserId;
   final String displayName;
+  final bool isGroup;
 
   const ChatPage({
     super.key,
     required this.chatUserId,
     required this.displayName,
+    this.isGroup = false,
   });
 
   @override
@@ -19,11 +23,19 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
-  final ScrollController _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
+
   bool _showScrollToBottom = false;
+  // ignore: prefer_final_fields
   bool _isNearBottom = true;
   final Set<int> _selectedIndices = {};
   dynamic _replyingToMessage;
+  late ChatController _chatController;
+  late AuthState _authState;
+
+  String? _highlightedMessageId;
 
   int _previousMessageCount = 0;
 
@@ -31,11 +43,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _scrollController.addListener(_scrollListener);
 
+    _itemPositionsListener.itemPositions.addListener(_scrollListener);
+
+    _chatController = context.read<ChatController>();
+    _authState = context.read<AuthState>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<ChatController>().openChat(widget.chatUserId);
+        _chatController.openChat(widget.chatUserId, isGroup: widget.isGroup);
       }
     });
   }
@@ -43,13 +58,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _scrollController.removeListener(_scrollListener);
-    _scrollController.dispose();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<ChatController>().closeChat();
-      }
+
+    _itemPositionsListener.itemPositions.removeListener(_scrollListener);
+
+    Future.microtask(() {
+      _chatController.closeChat();
     });
+
     super.dispose();
   }
 
@@ -65,12 +80,53 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  void _scrollListener() {
-    if (!_scrollController.hasClients) return;
+  void _scrollToAndHighlight(String messageId) async {
+    final chatState = context.read<ChatController>();
+    final activeChat = chatState.activeChat;
 
-    final offset = _scrollController.offset;
-    _isNearBottom = offset <= 300;
-    final isScrolledUp = offset > 300;
+    final targetIndex = activeChat.indexWhere((msg) => msg.id == messageId);
+
+    if (targetIndex != -1 && _itemScrollController.isAttached) {
+      final int realVisualIndex =
+          (activeChat.length - 1 - targetIndex) +
+          (chatState.isPeerTyping ? 2 : 1);
+
+      await _itemScrollController.scrollTo(
+        index: realVisualIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
+        alignment: 0.5,
+      );
+
+      setState(() {
+        _highlightedMessageId = messageId;
+      });
+
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          setState(() {
+            _highlightedMessageId = null;
+          });
+        }
+      });
+    }
+  }
+
+  void _scrollListener() {
+    final positions = _itemPositionsListener.itemPositions.value;
+    if (positions.isEmpty) return;
+
+    final bottomItem = positions.firstWhere(
+      (p) => p.index == 0,
+      orElse: () => const ItemPosition(
+        index: -1,
+        itemLeadingEdge: 0,
+        itemTrailingEdge: 0,
+      ),
+    );
+
+    final isScrolledUp =
+        bottomItem.index == -1 || bottomItem.itemLeadingEdge < -0.1;
 
     if (isScrolledUp != _showScrollToBottom) {
       setState(() {
@@ -80,16 +136,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   void _scrollToBottom({bool animated = true}) {
-    if (!_scrollController.hasClients) return;
+    if (!_itemScrollController.isAttached) return;
 
     if (animated) {
-      _scrollController.animateTo(
-        0.0,
+      _itemScrollController.scrollTo(
+        index: 0,
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeOutCubic,
       );
     } else {
-      _scrollController.jumpTo(0.0);
+      _itemScrollController.jumpTo(index: 0);
     }
   }
 
@@ -109,6 +165,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       text,
       replyingTo: _replyingToMessage,
       replyingToName: replyName,
+      senderId: _authState.currentUser!.displayName,
     );
 
     setState(() {
@@ -253,9 +310,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     ],
                   )
                 : GlassAppBar(
+                  isGroup: widget.isGroup,
+                  chatId: chatState.currentChatUserId!,
                     key: const ValueKey('GlassAppBar'),
                     name: widget.displayName,
-                    status: _getPresenceStatusText(chatState),
+                    status: widget.isGroup
+                        ? null
+                        : _getPresenceStatusText(chatState),
                   ),
           ),
         ),
@@ -296,25 +357,29 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         ),
                       ),
                     )
-                  : ListView.builder(
+                  : ScrollablePositionedList.builder(
                       key: const ValueKey('list'),
-                      controller: _scrollController,
+                      itemScrollController: _itemScrollController,
+                      itemPositionsListener: _itemPositionsListener,
                       reverse: true,
                       physics: const AlwaysScrollableScrollPhysics(
                         parent: BouncingScrollPhysics(),
                       ),
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.only(
-                        bottom: 140,
+                        // bottom: 140,
                         top: 140,
                         left: 16,
                         right: 16,
                       ),
                       itemCount:
-                          activeChat.length + (chatState.isPeerTyping ? 2 : 1),
+                          activeChat.length +
+                          (chatState.isPeerTyping ? 2 : 1) +
+                          1,
                       itemBuilder: (context, index) {
                         if (index == 0) {
+                          return const SizedBox(height: 140);
+                        }
+                        if (index == 1) {
                           return AnimatedSize(
                             duration: const Duration(milliseconds: 250),
                             curve: Curves.easeOutCubic,
@@ -324,7 +389,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                           );
                         }
 
-                        if (chatState.isPeerTyping && index == 1) {
+                        if (chatState.isPeerTyping && index == 2) {
                           return _AnimatedMessageItem(
                             key: const ValueKey('typing_indicator'),
                             child: Align(
@@ -361,9 +426,12 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         }
 
                         final int msgIndex =
-                            index - (chatState.isPeerTyping ? 2 : 1);
+                            index - (chatState.isPeerTyping ? 3 : 2);
                         final int realIndex = activeChat.length - 1 - msgIndex;
                         final msg = activeChat[realIndex];
+
+                        final bool isHighlighted =
+                            msg.id == _highlightedMessageId;
                         final bool isSelected = _selectedIndices.contains(
                           realIndex,
                         );
@@ -381,19 +449,36 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         final String cleanSenderId = msg.senderId
                             .trim()
                             .toLowerCase();
-                        final String cleanPeerId = widget.chatUserId
+                        widget.chatUserId
                             .trim()
                             .toLowerCase();
+
                         final bool isMe =
                             cleanSenderId == 'me' ||
-                            (cleanSenderId.isNotEmpty &&
-                                cleanSenderId != cleanPeerId);
+                            (_authState.currentUser?.id != null &&
+                                cleanSenderId ==
+                                    _authState.currentUser!.id.toLowerCase());
+
+                        final String senderId = msg.senderId
+                            .trim()
+                            .toLowerCase();
+                        final String? displayName = widget.isGroup
+                            ? (chatState.groupMemberNames[senderId] ??
+                                  'Unknown')
+                            : null;
+
+                        bool showSenderName = widget.isGroup;
+                        if (widget.isGroup &&
+                            realIndex < activeChat.length - 1) {
+                          final previousMsg = activeChat[realIndex + 1];
+                          if (previousMsg.senderId.trim().toLowerCase() ==
+                              cleanSenderId) {
+                            showSenderName = false;
+                          }
+                        }
 
                         return _AnimatedMessageItem(
-                          key: ValueKey(
-                            msg.id?.toString() ??
-                                msg.createdAt.millisecondsSinceEpoch.toString(),
-                          ),
+                          key: ValueKey(msg.id.toString()),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -438,11 +523,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                   duration: const Duration(milliseconds: 200),
                                   curve: Curves.easeOutCubic,
                                   child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
+                                    duration: const Duration(milliseconds: 350),
                                     decoration: BoxDecoration(
-                                      color: isSelected
+                                      color: isSelected || isHighlighted
                                           ? theme.colorScheme.primary
-                                                .withValues(alpha: 0.15)
+                                                .withValues(alpha: 0.25)
                                           : Colors.transparent,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
@@ -459,6 +544,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                         timestamp: msg.createdAt,
                                         isRead: msg.isRead,
                                         quotedMessage: msg.quotedMessage,
+                                        isGroup: widget.isGroup,
+                                        senderName: showSenderName
+                                            ? displayName
+                                            : null,
+                                        onQuoteTap: msg.quotedMessage != null
+                                            ? () => _scrollToAndHighlight(
+                                                msg.quotedMessage!.id,
+                                              )
+                                            : null,
                                       ),
                                     ),
                                   ),
