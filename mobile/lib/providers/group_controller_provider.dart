@@ -5,16 +5,24 @@ import 'package:mobile/services/api.dart';
 
 class GroupController extends ChangeNotifier {
   final Map<String, Map<String, String>> _selectedContacts = {};
-
   Map<String, Map<String, String>> get selectedContacts => _selectedContacts;
 
-  void addContacts(Map<String, Map<String, String>> contacts) {
+  void setContacts(Map<String, Map<String, String>> contacts) {
     _selectedContacts.clear();
     _selectedContacts.addAll(contacts);
     notifyListeners();
   }
+//hhhh.1585
+  void toggleContact(String id, Map<String, String> contactData) {
+    if (_selectedContacts.containsKey(id)) {
+      _selectedContacts.remove(id);
+    } else {
+      _selectedContacts[id] = contactData;
+    }
+    notifyListeners();
+  }
 
-  // Group Creation
+  // --- Group Creation ---
 
   final ApiService _api = ApiService();
 
@@ -47,10 +55,18 @@ class GroupController extends ChangeNotifier {
 
         if (memberIds.isNotEmpty) {
           final memberRequests = memberIds.map((userId) {
-            return _api.post(
-              '/groups/${newGroup.id}/members',
-              data: {"user_id": userId},
-            );
+            return _api
+                .post(
+                  '/groups/${newGroup.id}/members',
+                  data: {"user_id": userId},
+                )
+                .catchError((error) {
+                  debugPrint("Failed to add user $userId to group: $error");
+                  return Response(
+                    requestOptions: RequestOptions(path: ''),
+                    statusCode: 500,
+                  );
+                });
           });
 
           await Future.wait(memberRequests);
@@ -62,8 +78,6 @@ class GroupController extends ChangeNotifier {
       return null;
     } on DioException catch (e) {
       debugPrint("Dio Error: ${e.message}");
-      debugPrint("URL: ${e.requestOptions.uri}");
-
       if (e.response != null) {
         debugPrint("Payload: ${e.response?.data}");
       }
@@ -100,8 +114,6 @@ class GroupController extends ChangeNotifier {
     }
   }
 
-  // Inside GroupController
-
   Future<bool> removeMemberFromGroup(String groupId, String userId) async {
     try {
       _isLoading = true;
@@ -120,5 +132,11 @@ class GroupController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void clearGroupData() {
+    _selectedContacts.clear();
+    _isLoading = false;
+    notifyListeners();
   }
 }

@@ -90,6 +90,9 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
     inbox.clear();
     activeChat.clear();
     contactSearchResults.clear();
+    groupMemberNames.clear();
+    userCache.clear();
+    _currentGroupMembers.clear();
     currentChatUserId = null;
     isPeerTyping = false;
     isPeerOnline = false;

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile/controllers/auth.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'package:mobile/main.dart';
+import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
 
 class AccountsSettings extends StatelessWidget {
@@ -138,15 +139,17 @@ class AccountsSettings extends StatelessWidget {
               backgroundColor: WidgetStatePropertyAll(Colors.redAccent),
             ),
             onPressed: () async {
-              context.read<ChatController>().clearSessionData();
               await context.read<AuthState>().logout();
+
               if (context.mounted) {
+                context.read<ChatController>().clearSessionData();
+                context.read<GroupController>().clearGroupData();
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const SessionGateway(),
                   ),
-                  (route) => false,
+                  (Route<dynamic> route) => false,
                 );
               }
             },

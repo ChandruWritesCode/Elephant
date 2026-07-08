@@ -21,11 +21,13 @@ class _SelectContactPageState extends State<SelectContactPage> {
   final _searchController = TextEditingController();
   final _groupNameController = TextEditingController();
 
-  void _onSearchChanged(String value, ChatController chatState) {
+  void _onSearchChanged(String value) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      chatState.queryUsers(value);
+      if (mounted) {
+        context.read<ChatController>().queryUsers(value);
+      }
     });
   }
 
@@ -93,7 +95,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
         ),
       ),
       subtitle: Text(
-        "@$username",
+        username.startsWith('@') ? username : "@$username",
         style: const TextStyle(color: Colors.black45),
       ),
       onTap: () => _toggleSelection(id, displayName, username),
@@ -119,15 +121,18 @@ class _SelectContactPageState extends State<SelectContactPage> {
               begin: const Offset(0.5, 0.0),
               end: Offset.zero,
             );
-            final offsetAnimation = tween.animate(animation);
-            return SlideTransition(position: offsetAnimation, child: child);
+            return SlideTransition(
+              position: tween.animate(animation),
+              child: child,
+            );
           },
           child: _isSearchOpen
               ? SizedBox(
                   height: 40,
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (val) => _onSearchChanged(val, chatState),
+                    onChanged:
+                        _onSearchChanged, 
                     style: const TextStyle(color: Colors.black87),
                     autofocus: true,
                     decoration: InputDecoration(
@@ -144,7 +149,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
                               ),
                               onPressed: () {
                                 _searchController.clear();
-                                chatState.queryUsers("");
+                                context.read<ChatController>().queryUsers(
+                                  "",
+                                ); 
                               },
                             )
                           : null,
@@ -179,7 +186,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
                 _isSearchOpen = !_isSearchOpen;
                 if (!_isSearchOpen) {
                   _searchController.clear();
-                  chatState.queryUsers("");
+                  context.read<ChatController>().queryUsers(
+                    "",
+                  );
                 }
               });
             },
@@ -297,7 +306,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
                               (thread) => _buildContactTile(
                                 id: thread.id,
                                 displayName: thread.title,
-                                username: thread.title,
+                                username: thread.title
+                                    .replaceAll(' ', '')
+                                    .toLowerCase(),
                               ),
                             ),
                     ],
@@ -311,7 +322,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
               elevation: 4,
               child: const Icon(Icons.arrow_forward, color: Colors.white),
               onPressed: () {
-                context.read<GroupController>().addContacts(_selectedContacts);
+                context.read<GroupController>().setContacts(_selectedContacts);
 
                 showModalBottomSheet(
                   context: context,
@@ -323,7 +334,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
                   ),
                   builder: (BuildContext bottomSheetContext) {
                     return Consumer<GroupController>(
-                      builder: (context, groupState, child) {
+                      builder: (modalContext, groupState, child) {
                         return Padding(
                           padding: EdgeInsets.only(
                             bottom: MediaQuery.of(
@@ -369,7 +380,11 @@ class _SelectContactPageState extends State<SelectContactPage> {
                                                 .keys
                                                 .toList();
 
-                                            final newGroup = await context
+                                            final rootNavigator = Navigator.of(
+                                              context,
+                                            );
+
+                                            final newGroup = await modalContext
                                                 .read<GroupController>()
                                                 .createGroup(
                                                   groupName: groupName,
@@ -386,22 +401,24 @@ class _SelectContactPageState extends State<SelectContactPage> {
                                               Navigator.of(
                                                 bottomSheetContext,
                                               ).pop();
-                                              Navigator.of(
-                                                context,
-                                              ).pushReplacement(
+
+                                              _groupNameController.clear();
+
+                                              rootNavigator.pushReplacement(
                                                 MaterialPageRoute(
                                                   builder: (context) =>
                                                       ChatPage(
                                                         chatUserId: newGroup.id,
                                                         displayName:
                                                             newGroup.name,
+                                                            isGroup: true,
                                                       ),
                                                 ),
                                               );
 
                                               context
                                                   .read<ChatController>()
-                                                  .openChat(newGroup.id);
+                                                  .openChat(newGroup.id, isGroup: true);
                                             } else {
                                               if (!context.mounted) return;
                                               ScaffoldMessenger.of(
