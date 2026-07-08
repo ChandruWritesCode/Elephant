@@ -242,7 +242,7 @@ class _LoginPageState extends State<LoginPage>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(
-                        Icons.security_rounded,
+                        Icons.chat_bubble_rounded,
                         color: Color(0xFF0052CC),
                         size: 28,
                       ),
@@ -372,7 +372,7 @@ class _LoginPageState extends State<LoginPage>
                     controller: _usernameController,
                     style: const TextStyle(color: Colors.black87, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: "elephant_user",
+                      hintText: "username",
                       hintStyle: const TextStyle(color: Colors.black38),
                       filled: true,
                       fillColor: const Color(0xFFF4F5F7),
