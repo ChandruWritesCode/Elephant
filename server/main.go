@@ -12,6 +12,9 @@ func main() {
 	config.InitDatabase()
 	defer config.DB.Close()
 
+	// OAuth init
+	config.InitOAuth()
+
 	// WS init
 	go services.Hub.Run()
 

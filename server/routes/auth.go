@@ -9,4 +9,7 @@ func AuthRoute(router chi.Router) {
 	router.Post("/register", controllers.HandleRegister)
 	router.Post("/login", controllers.HandleLogin)
 	router.Post("/refresh", controllers.HandleRefresh)
+
+	router.Get("/{provider}", controllers.HandleOAuthRedirect)
+	router.Get("/{provider}/callback", controllers.HandleOAuthCallback)
 }
