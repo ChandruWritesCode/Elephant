@@ -125,6 +125,13 @@ flutter run
 | `ARGON_MEMORY` | Argon2id memory cost (KB) | `65536` |
 | `ARGON_ITERATIONS` | Argon2id iteration count | `3` |
 | `ARGON_PARALLELISM` | Argon2id parallelism degree | `2` |
+|`GOOGLE_CLIENT_ID`| Google OAuth client ID| — |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secrett | — |
+| `GOOGLE_REDIRECT_URL` | Google OAuth redirect callback URL | `http://HOST:PORT/api/auth/google/callback` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth client ID | — |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret | — |
+| `GITHUB_REDIRECT_URL` | GitHub OAuth redirect callback URL | `http://HOST:PORT/api/auth/github/callback` |
+
  
 See `.env.example` for a starting template.
 
