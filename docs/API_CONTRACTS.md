@@ -17,8 +17,8 @@
 | POST | [/api/auth/login](#2-login-user) | Log in and receive a token pair |
 | POST | [/api/auth/refresh](#3-refresh) | Exchange a refresh token for a new token pair |
 | GET | [/api/users/me](#1-user-me) | Get the authenticated user's profile |
-| GET | [/api/users/:id](#2-search-user-by-id) | Search users by username or display name |
-| GET | [/api/users/search?q=&page=&limit=](#3-search-user-by-username-and-display-name) | Get a public user profile |
+| GET | [/api/users/:id](#2-search-user-by-id) | Search users by User id |
+| GET | [/api/users/search?q=&page=&limit=](#3-search-user-by-username-and-display-name) | Search user by username and display name |
 | GET | [/ws](#1-connect-to-websocket) | WebSocket upgrade endpoint (JWT required) |
 | WS | [Client to Server](#2-client-to-server-messages) | Client to Server Websocket |
 | WS | [Server to Client](#3-server-to-client-messages) | Server to Client Websocket |
@@ -697,10 +697,10 @@ Conversations is successfully retrieved.
       "name": "<username>",
       "display_name": "<display Name>",
       "last_message": "<content>",
-      "last_message_time": "<last message time>",
+      "last_message_time": "<Timestamp",
       "sender_id": "<user_id>",
-      "is_read": (bool)"<read of coresponding user>",
-      "unread_count": (int)0"<unread_count of corresponding user>"
+      "is_read": false/true"<read_status>",
+      "unread_count": 0"<unread_count of corresponding user>"
     }
   ]
 }
@@ -782,7 +782,7 @@ Returned when group is successfully created
 ```
 
 ##### `401 Unauthorized`
-Returned when access token is expried or incorrect.
+Returned when access token is expired or incorrect.
 ```json
 {
   "success": false,
@@ -983,7 +983,7 @@ Returned when access token is expired or incorrect
 
 ### 6. Leave Group
 
-- **URL:** `/api/messages/groups/{id}/leave`
+- **URL:** `/api/groups/{id}/leave`
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
@@ -1020,14 +1020,14 @@ Returned when access token is expired or incorrect
 
 ### 7. Update Group Details
 
-- **URL:** `/api/messages/groups/{id}/`
+- **URL:** `/api/groups/{id}/`
 - **Method:** `PATCH`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
 - **Admin Access Required:** `YES`
 - **curl:** `curl -X PATCH "http://HOST:PORT/api/groups/{id}/" -H "Authorization: Bearer <access_token>" -d '{ "name":"<group_name>" }'`
 
-#### Response Body
+#### Request Body
 ```json
 {
   "name":"<new_group_name>"
@@ -1070,7 +1070,7 @@ Returned when access token is expired or incorrect
 ```
 
 ### 8. Add Member to group
-- **URL:** `/api/messages/groups/{id}/members`
+- **URL:** `/api/groups/{id}/members`
 - **Method:** `POST`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
@@ -1129,7 +1129,7 @@ Returned when access token is expired or incorrect
 ```
 
 ### 9. Remove User from Group
-- **URL:** `/api/messages/groups/{id}/members/{user_id}`
+- **URL:** `/api/groups/{id}/members/{user_id}`
 - **Method:** `DELETE`
 - **Headers:** `Content-Type: application/json`
 - **Authentication Required:** `YES`
