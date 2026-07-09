@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/controllers/auth.dart';
+import 'package:mobile/controllers/chat.dart';
+import 'package:provider/provider.dart';
 import 'package:simple_rich_text/simple_rich_text.dart';
 import '../models/inbox_item.dart';
 import '../pages/chat_page.dart';
@@ -38,10 +41,23 @@ class CustomChatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String timeLabel = _formatTimestamp(conversation.timestamp);
     final bool hasUnread = conversation.unreadCount > 0;
+    final chatState = context.watch<ChatController>();
+
+    final currentUserId = context.read<AuthState>().currentUser?.id;
+
+    String? senderName;
+    if (conversation.isGroup && conversation.lastMessageSender != null) {
+      if (conversation.lastMessageSender == currentUserId) {
+        senderName = "You";
+      } else {
+        senderName =
+            chatState.userCache[conversation.lastMessageSender!] ?? "Member";
+      }
+    }
 
     return Material(
       color: isSelected
-          ? Colors.blue.withValues(alpha: 0.1)
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
           : Colors.transparent,
       child: InkWell(
         onLongPress: onLongPress,
@@ -56,6 +72,7 @@ class CustomChatCard extends StatelessWidget {
                   builder: (_) => ChatPage(
                     chatUserId: conversation.id,
                     displayName: conversation.title,
+                    isGroup: conversation.isGroup,
                   ),
                 ),
               );
@@ -74,10 +91,12 @@ class CustomChatCard extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 26,
-                      backgroundColor: const Color(0xFFD6E4FF),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
                       child: Icon(
                         conversation.isGroup ? Icons.group : Icons.person,
-                        color: const Color(0xFF1890FF),
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
                     Positioned(
@@ -88,13 +107,13 @@ class CustomChatCard extends StatelessWidget {
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeOutBack,
                         child: Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.check_circle,
-                            color: Colors.blue,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 22,
                           ),
                         ),
@@ -110,19 +129,23 @@ class CustomChatCard extends StatelessWidget {
                   children: [
                     Text(
                       conversation.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
                     SimpleRichText(
-                      conversation.lastMessage.replaceAll('\n', ' '),
+                      senderName != null
+                          ? "*$senderName:* ${conversation.lastMessage.replaceAll('\n', ' ')}"
+                          : conversation.lastMessage.replaceAll('\n', ' '),
                       maxLines: 1,
                       textOverflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: hasUnread ? Colors.black87 : Colors.black54,
+                        color: hasUnread
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 15,
                       ),
                     ),
@@ -137,8 +160,8 @@ class CustomChatCard extends StatelessWidget {
                     timeLabel,
                     style: TextStyle(
                       color: hasUnread
-                          ? const Color(0xFF1890FF)
-                          : Colors.black38,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                       fontSize: 12,
                       fontWeight: hasUnread
                           ? FontWeight.w600
@@ -157,7 +180,7 @@ class CustomChatCard extends StatelessWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1890FF),
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       alignment: Alignment.center,
@@ -165,8 +188,8 @@ class CustomChatCard extends StatelessWidget {
                         conversation.unreadCount > 99
                             ? "99+"
                             : "${conversation.unreadCount}",
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),

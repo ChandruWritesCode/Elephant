@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
+import 'package:mobile/themes/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'core/constants.dart';
 import 'controllers/auth.dart';
 import 'controllers/chat.dart';
+import 'services/auth.dart';
 import 'pages/login.dart';
 import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Env.init();
+  await AuthService().initTokens();
+
+  final themeProvider = ThemeProvider();
+
+  while (!themeProvider.isInitialized) {
+    await Future.delayed(const Duration(milliseconds: 10));
+  }
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => BasicProviders()),
         ChangeNotifierProvider(create: (_) => AuthState()),
         ChangeNotifierProvider(create: (_) => ChatController()),
@@ -32,11 +43,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Elephant',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF0052CC),
-        scaffoldBackgroundColor: const Color(0xFFFAFBFC),
-      ),
+      theme: context.watch<ThemeProvider>().themeData,
       home: const SessionGateway(),
     );
   }
@@ -65,7 +72,7 @@ class _SessionGatewayState extends State<SessionGateway> {
 
     if (token != null && mounted) {
       _lastInitializedToken = token;
-      context.read<ChatController>().initSession(token);
+      context.read<ChatController>().initSession();
     }
 
     if (mounted) {
@@ -78,10 +85,12 @@ class _SessionGatewayState extends State<SessionGateway> {
   @override
   Widget build(BuildContext context) {
     if (!_hasCheckedAutoLogin) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF0052CC)),
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
       );
     }
@@ -91,7 +100,7 @@ class _SessionGatewayState extends State<SessionGateway> {
     if (authState.token != null && authState.token != _lastInitializedToken) {
       _lastInitializedToken = authState.token;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<ChatController>().initSession(authState.token!);
+        context.read<ChatController>().initSession();
       });
     }
 

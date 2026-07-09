@@ -1,5 +1,4 @@
-import 'package:mobile/pages/profile_setup_page.dart';
-import 'package:mobile/providers/basic_providers.dart';
+import 'package:mobile/pages/temp/profile_setup_page.dart';
 import 'package:mobile/providers/timer_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -32,18 +31,8 @@ class PhoneNumberPage extends StatelessWidget {
               initialCountryCode: 'IN',
               controller: numberController,
               decoration: InputDecoration(border: OutlineInputBorder()),
-              onChanged: (value) {
-                context.read<BasicProviders>().updateConCode(value.countryCode);
-                context.read<BasicProviders>().updateNumber(value.number);
-                context.read<BasicProviders>().setNumberValid(
-                  value.isValidNumber(),
-                );
-              },
-              onCountryChanged: (value) {
-                context.read<BasicProviders>().updateConCode(
-                  '+${value.dialCode}',
-                );
-              },
+              onChanged: (value) {},
+              onCountryChanged: (value) {},
             ),
             Spacer(),
             Container(
@@ -54,11 +43,8 @@ class PhoneNumberPage extends StatelessWidget {
                     Size(double.infinity, 40),
                   ),
                 ),
-                onPressed: context.watch<BasicProviders>().isNumberValid
-                    ? () {
-                        context.read<BasicProviders>().updateNumber(
-                          numberController.text,
-                        );
+                onPressed: 
+                    () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => ChangeNotifierProvider(
@@ -67,8 +53,7 @@ class PhoneNumberPage extends StatelessWidget {
                             ),
                           ),
                         );
-                      }
-                    : null,
+                      },
                 child: Text('Next'),
               ),
             ),
@@ -99,7 +84,7 @@ class NumberVerificationPage extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                "We've sent a 6-digit code to\n${context.read<BasicProviders>().getCompleteNumber}",
+                "We've sent a 6-digit code to\n",
                 textAlign: .center,
               ),
               const SizedBox(height: 25),

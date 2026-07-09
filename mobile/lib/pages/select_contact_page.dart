@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'package:mobile/pages/chat_page.dart';
@@ -21,11 +22,13 @@ class _SelectContactPageState extends State<SelectContactPage> {
   final _searchController = TextEditingController();
   final _groupNameController = TextEditingController();
 
-  void _onSearchChanged(String value, ChatController chatState) {
+  void _onSearchChanged(String value) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      chatState.queryUsers(value);
+      if (mounted) {
+        context.read<ChatController>().queryUsers(value);
+      }
     });
   }
 
@@ -59,26 +62,31 @@ class _SelectContactPageState extends State<SelectContactPage> {
 
     return ListTile(
       selected: isSelected,
-      selectedTileColor: Colors.blue.withValues(alpha: 0.1),
+      selectedTileColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.12),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Stack(
         children: [
-          const CircleAvatar(
-            backgroundColor: Color(0xFFD6E4FF),
-            child: Icon(Icons.person, color: Color(0xFF1890FF)),
+          CircleAvatar(
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Icon(
+              Icons.person,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
           ),
           if (isSelected)
             Positioned(
               right: 0,
               bottom: 0,
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.check_circle,
-                  color: Colors.blue,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 18,
                 ),
               ),
@@ -87,14 +95,14 @@ class _SelectContactPageState extends State<SelectContactPage> {
       ),
       title: Text(
         displayName,
-        style: const TextStyle(
-          color: Colors.black87,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w600,
         ),
       ),
       subtitle: Text(
-        "@$username",
-        style: const TextStyle(color: Colors.black45),
+        username.startsWith('@') ? username : "@$username",
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       onTap: () => _toggleSelection(id, displayName, username),
     );
@@ -106,9 +114,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
     final bool isSearching = _searchController.text.trim().isNotEmpty;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         scrolledUnderElevation: 0,
         title: AnimatedSwitcher(
           switchInCurve: Curves.decelerate,
@@ -119,37 +127,43 @@ class _SelectContactPageState extends State<SelectContactPage> {
               begin: const Offset(0.5, 0.0),
               end: Offset.zero,
             );
-            final offsetAnimation = tween.animate(animation);
-            return SlideTransition(position: offsetAnimation, child: child);
+            return SlideTransition(
+              position: tween.animate(animation),
+              child: child,
+            );
           },
           child: _isSearchOpen
               ? SizedBox(
                   height: 40,
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (val) => _onSearchChanged(val, chatState),
-                    style: const TextStyle(color: Colors.black87),
+                    onChanged: _onSearchChanged,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: "Name, username or number",
-                      hintStyle: const TextStyle(
-                        color: Colors.black38,
+                      hintStyle: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 15,
                       ),
                       suffixIcon: isSearching
                           ? IconButton(
-                              icon: const Icon(
+                              icon: Icon(
                                 Icons.clear,
-                                color: Colors.black38,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                               onPressed: () {
                                 _searchController.clear();
-                                chatState.queryUsers("");
+                                context.read<ChatController>().queryUsers("");
                               },
                             )
                           : null,
                       filled: true,
-                      fillColor: const Color(0xFFF5F5F5),
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       contentPadding: const EdgeInsets.symmetric(
                         vertical: 10,
                         horizontal: 16,
@@ -161,15 +175,15 @@ class _SelectContactPageState extends State<SelectContactPage> {
                     ),
                   ),
                 )
-              : const Text(
+              : Text(
                   'Select Contacts',
                   style: TextStyle(
                     letterSpacing: 0.5,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
-                  key: ValueKey('title'),
+                  key: const ValueKey('title'),
                 ),
         ),
         actions: [
@@ -179,13 +193,13 @@ class _SelectContactPageState extends State<SelectContactPage> {
                 _isSearchOpen = !_isSearchOpen;
                 if (!_isSearchOpen) {
                   _searchController.clear();
-                  chatState.queryUsers("");
+                  context.read<ChatController>().queryUsers("");
                 }
               });
             },
             icon: Icon(
               _isSearchOpen ? Icons.close : Icons.search,
-              color: Colors.black87,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ],
@@ -198,15 +212,17 @@ class _SelectContactPageState extends State<SelectContactPage> {
             child: _selectedContacts.isNotEmpty
                 ? Container(
                     width: double.infinity,
-                    color: Colors.blue.withValues(alpha: 0.1),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.12),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
                     ),
                     child: Text(
                       '${_selectedContacts.length} selected',
-                      style: const TextStyle(
-                        color: Colors.blue,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -217,16 +233,22 @@ class _SelectContactPageState extends State<SelectContactPage> {
           Expanded(
             child: isSearching
                 ? (chatState.isSearchLoading
-                      ? const Center(
+                      ? Center(
                           child: CircularProgressIndicator(
-                            color: Color(0xFF1890FF),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         )
                       : chatState.contactSearchResults.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            "No users found",
-                            style: TextStyle(color: Colors.grey, fontSize: 15),
+                            "No users found (try entering at least 3 characters to search)",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 15,
+                            ),
                           ),
                         )
                       : ListView.builder(
@@ -252,8 +274,8 @@ class _SelectContactPageState extends State<SelectContactPage> {
                 : ListView(
                     children: [
                       if (_selectedContacts.isNotEmpty) ...[
-                        const Padding(
-                          padding: EdgeInsets.only(
+                        Padding(
+                          padding: const EdgeInsets.only(
                             left: 16,
                             top: 20,
                             bottom: 8,
@@ -261,7 +283,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
                           child: Text(
                             "Selected Contacts",
                             style: TextStyle(
-                              color: Colors.black38,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -275,12 +299,18 @@ class _SelectContactPageState extends State<SelectContactPage> {
                           ),
                         ),
                       ],
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16, top: 20, bottom: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          top: 20,
+                          bottom: 8,
+                        ),
                         child: Text(
                           "Recent Contacts",
                           style: TextStyle(
-                            color: Colors.black38,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
@@ -297,7 +327,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
                               (thread) => _buildContactTile(
                                 id: thread.id,
                                 displayName: thread.title,
-                                username: thread.title,
+                                username: thread.title
+                                    .replaceAll(' ', '')
+                                    .toLowerCase(),
                               ),
                             ),
                     ],
@@ -307,13 +339,18 @@ class _SelectContactPageState extends State<SelectContactPage> {
       ),
       floatingActionButton: _selectedContacts.isNotEmpty
           ? FloatingActionButton(
-              backgroundColor: Colors.blue,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               elevation: 4,
-              child: const Icon(Icons.arrow_forward, color: Colors.white),
+              child: Icon(
+                Icons.arrow_forward,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
               onPressed: () {
-                context.read<GroupController>().addContacts(_selectedContacts);
+                context.read<GroupController>().setContacts(_selectedContacts);
 
                 showModalBottomSheet(
+                  backgroundColor: Colors.transparent,
                   context: context,
                   isScrollControlled: true,
                   shape: const RoundedRectangleBorder(
@@ -323,113 +360,195 @@ class _SelectContactPageState extends State<SelectContactPage> {
                   ),
                   builder: (BuildContext bottomSheetContext) {
                     return Consumer<GroupController>(
-                      builder: (context, groupState, child) {
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: MediaQuery.of(
-                              bottomSheetContext,
-                            ).viewInsets.bottom,
-                            left: 16,
-                            right: 16,
-                            top: 24,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text(
-                                'New Group',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                      builder: (modalContext, groupState, child) {
+                        return ClipRect(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surface.withValues(alpha: 0.85),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(16),
+                                ),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: Theme.of(context).colorScheme.surface
+                                        .withValues(alpha: 0.5),
+                                    width: 1,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              TextField(
-                                controller: _groupNameController,
-                                autofocus: true,
-                                decoration: const InputDecoration(
-                                  hintText: 'Enter group name',
-                                  border: OutlineInputBorder(),
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: MediaQuery.of(
+                                    bottomSheetContext,
+                                  ).viewInsets.bottom,
+                                  left: 16,
+                                  right: 16,
+                                  top: 24,
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  FilledButton(
-                                    onPressed: groupState.isLoading
-                                        ? null
-                                        : () async {
-                                            final groupName =
-                                                _groupNameController.text
-                                                    .trim();
-                                            if (groupName.isEmpty) return;
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'New Group',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextField(
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                      ),
+                                      controller: _groupNameController,
+                                      autofocus: true,
+                                      decoration: InputDecoration(
+                                        hintText: 'Enter group name',
+                                        hintStyle: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.outlineVariant,
+                                          ),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        FilledButton(
+                                          onPressed: groupState.isLoading
+                                              ? null
+                                              : () async {
+                                                  final groupName =
+                                                      _groupNameController.text
+                                                          .trim();
+                                                  if (groupName.isEmpty) return;
 
-                                            final memberIds = _selectedContacts
-                                                .keys
-                                                .toList();
+                                                  final memberIds =
+                                                      _selectedContacts.keys
+                                                          .toList();
 
-                                            final newGroup = await context
-                                                .read<GroupController>()
-                                                .createGroup(
-                                                  groupName: groupName,
-                                                  memberIds: memberIds,
-                                                );
+                                                  final rootNavigator =
+                                                      Navigator.of(context);
 
-                                            if (newGroup != null) {
-                                              if (!context.mounted) return;
+                                                  final newGroup =
+                                                      await modalContext
+                                                          .read<
+                                                            GroupController
+                                                          >()
+                                                          .createGroup(
+                                                            groupName:
+                                                                groupName,
+                                                            memberIds:
+                                                                memberIds,
+                                                          );
 
-                                              context
-                                                  .read<ChatController>()
-                                                  .loadInbox();
+                                                  if (newGroup != null) {
+                                                    if (!context.mounted)
+                                                      return;
 
-                                              Navigator.of(
-                                                bottomSheetContext,
-                                              ).pop();
-                                              Navigator.of(
-                                                context,
-                                              ).pushReplacement(
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      ChatPage(
-                                                        chatUserId: newGroup.id,
-                                                        displayName:
-                                                            newGroup.name,
+                                                    context
+                                                        .read<ChatController>()
+                                                        .loadInbox();
+
+                                                    Navigator.of(
+                                                      bottomSheetContext,
+                                                    ).pop();
+
+                                                    _groupNameController
+                                                        .clear();
+
+                                                    rootNavigator
+                                                        .pushReplacement(
+                                                          MaterialPageRoute(
+                                                            builder:
+                                                                (
+                                                                  context,
+                                                                ) => ChatPage(
+                                                                  isNew: true,
+                                                                  chatUserId:
+                                                                      newGroup
+                                                                          .id,
+                                                                  displayName:
+                                                                      newGroup
+                                                                          .name,
+                                                                  isGroup: true,
+                                                                ),
+                                                          ),
+                                                        );
+                                                  } else {
+                                                    if (!context.mounted)
+                                                      return;
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'Failed to create group',
+                                                          style: TextStyle(
+                                                            color:
+                                                                Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .colorScheme
+                                                                    .onSurface,
+                                                          ),
+                                                        ),
                                                       ),
-                                                ),
-                                              );
-
-                                              context
-                                                  .read<ChatController>()
-                                                  .openChat(newGroup.id);
-                                            } else {
-                                              if (!context.mounted) return;
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Failed to create group',
+                                                    );
+                                                  }
+                                                },
+                                          child: groupState.isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : Text(
+                                                  'Create',
+                                                  style: TextStyle(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onSurface,
                                                   ),
                                                 ),
-                                              );
-                                            }
-                                          },
-                                    child: groupState.isLoading
-                                        ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Text('Create'),
-                                  ),
-                                ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                            ],
+                            ),
                           ),
                         );
                       },

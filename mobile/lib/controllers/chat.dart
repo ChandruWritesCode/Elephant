@@ -1,33 +1,45 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+// import 'package:mobile/controllers/auth.dart';
 import 'package:mobile/models/group.dart';
 import 'package:mobile/models/inbox_item.dart';
+import 'package:mobile/pages/chat_details_page.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
 import '../services/api.dart';
 import '../services/ws.dart';
+import '../services/auth.dart';
 
 class ChatController extends ChangeNotifier with WidgetsBindingObserver {
   final ApiService _api = ApiService();
   final WebSocketService _ws = WebSocketService();
+  final AuthService _auth = AuthService();
+  // final AuthState _user = AuthState();
 
   List<Message> activeChat = [];
   List<dynamic> contactSearchResults = [];
   List<InboxItem> inbox = [];
+  Map<String, String> groupMemberNames = {};
+  Map<String, String> userCache = {};
 
   String? currentChatUserId;
-  String? _sessionToken;
   bool isPeerTyping = false;
   bool isPeerOnline = false;
   bool isSearchLoading = false;
-  bool _isWsInitialized = false;
   bool isChatHistoryLoading = false;
+  bool isCurrentChatGroup = false;
+
+  bool _isLoadingDetails = false;
+  bool get isLoadingDetails => _isLoadingDetails;
+
+  List<ChatMember> _currentGroupMembers = [];
+  List<ChatMember> get currentGroupMembers => _currentGroupMembers;
+
+  bool _isWsInitialized = false;
 
   StreamSubscription? _wsSubscription;
-  Timer? _backgroundSyncTimer;
+  Timer? _reconnectTimer;
 
   ChatController() {
     WidgetsBinding.instance.addObserver(this);
@@ -36,14 +48,13 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      if (_sessionToken != null) {
-        _isWsInitialized = false;
-        _connectWebSocket();
-        loadInbox();
-        _startBackgroundSync();
-      }
+      _isWsInitialized = false;
+      _connectWebSocket();
+      loadInbox();
     } else if (state == AppLifecycleState.paused) {
-      _backgroundSyncTimer?.cancel();
+      _reconnectTimer?.cancel();
+      _ws.disconnect();
+      _isWsInitialized = false;
     }
   }
 
@@ -51,35 +62,55 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _wsSubscription?.cancel();
-    _backgroundSyncTimer?.cancel();
+    _reconnectTimer?.cancel();
+    _ws.disconnect();
     super.dispose();
   }
 
-  Future<void> initSession(String token) async {
-    _sessionToken = token;
-    _startBackgroundSync();
+  Future<void> initSession() async {
+    inbox.clear();
+    activeChat.clear();
+    contactSearchResults.clear();
+    currentChatUserId = null;
+    isPeerTyping = false;
+    isPeerOnline = false;
+
+    // _startBackgroundSync();
+
     if (_isWsInitialized) return;
     _isWsInitialized = true;
+
     _connectWebSocket();
-    await loadInbox();
+    notifyListeners();
   }
 
-  void _startBackgroundSync() {
-    _backgroundSyncTimer?.cancel();
-    _backgroundSyncTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      loadInbox();
-
-      if (currentChatUserId != null) {
-        syncActiveChatSilently();
-      }
-    });
+  void clearSessionData() {
+    _ws.disconnect();
+    _isWsInitialized = false;
+    inbox.clear();
+    activeChat.clear();
+    contactSearchResults.clear();
+    groupMemberNames.clear();
+    userCache.clear();
+    _currentGroupMembers.clear();
+    currentChatUserId = null;
+    isPeerTyping = false;
+    isPeerOnline = false;
+    notifyListeners();
   }
 
   void _connectWebSocket() async {
-    if (_sessionToken == null) return;
+
+    if (_ws.isConnected) return;
+
+    _reconnectTimer?.cancel();
+
+    final freshToken = await _auth.getToken();
+    if (freshToken == null) return;
 
     await _wsSubscription?.cancel();
-    await _ws.connect(_sessionToken!);
+    _ws.disconnect();
+    await _ws.connect(freshToken);
 
     _wsSubscription = _ws.stream?.listen(
       (rawFrame) {
@@ -98,47 +129,98 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
       onDone: () {
         _ws.disconnect();
         _isWsInitialized = false;
-        Future.delayed(const Duration(seconds: 3), () {
-          if (_sessionToken != null) {
-            _isWsInitialized = true;
-            _connectWebSocket();
-          }
+
+        _reconnectTimer?.cancel();
+        _reconnectTimer = Timer(const Duration(seconds: 3), () {
+          _isWsInitialized = true;
+          _connectWebSocket();
         });
       },
     );
   }
 
-  Future<void> openChat(String targetUid) async {
+  Future<void> openChat(String targetUid, {bool isGroup = false}) async {
     if (targetUid.isEmpty || targetUid == 'null') return;
 
     currentChatUserId = targetUid;
+    isCurrentChatGroup = isGroup;
     activeChat.clear();
     isPeerTyping = false;
     isPeerOnline = false;
     isChatHistoryLoading = true;
+    groupMemberNames.clear();
+
+    if (isGroup) {
+      _api
+          .getGroupMembers(targetUid)
+          .then((memberRes) {
+            if (currentChatUserId != targetUid) return;
+            final memberList = _extractDataList(memberRes.data, ['members']);
+
+            _currentGroupMembers = memberList
+                .map((json) => ChatMember.fromJson(json))
+                .toList();
+
+            for (var member in memberList) {
+              userCache[member['user_id'].toString()] =
+                  member['display_name'] ?? 'Member';
+              groupMemberNames[member['user_id'].toString()] =
+                  member['display_name'] ?? 'Unknown';
+            }
+            notifyListeners();
+          })
+          .catchError((e) {
+            debugPrint("Failed to load group members: $e");
+          });
+    }
+
     notifyListeners();
 
     try {
-      final res = await _api.getChatHistory(targetUid);
+      final res = await _api.getChatHistory(targetUid, isGroup: isGroup);
       if (currentChatUserId != targetUid) return;
 
       final targetList = _extractDataList(res.data, ['messages']);
-      final loadedMessages = await Isolate.run(() {
-        return targetList.reversed
-            .map((json) => Message.fromJson(json))
-            .toList();
-      });
+      final loadedMessages = targetList.reversed
+          .map((json) => Message.fromJson(json))
+          .toList();
 
       if (currentChatUserId != targetUid) return;
 
       activeChat = loadedMessages;
-      _ws.sendReadReceipt(targetId: targetUid);
+      _ws.sendReadReceipt(
+        receiverId: isCurrentChatGroup ? null : targetUid,
+        groupId: isCurrentChatGroup ? targetUid : null,
+      );
+
       _ws.sendRequestStatus(targetId: targetUid);
+
       unawaited(loadInbox());
     } catch (e) {
       debugPrint("Timeline tracking fail: $e");
     } finally {
       isChatHistoryLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchGroupMembers(String groupId) async {
+    try {
+      _isLoadingDetails = true;
+      notifyListeners();
+
+      final response = await _api.getGroupMembers(groupId);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? response.data;
+        _currentGroupMembers = data
+            .map((json) => ChatMember.fromJson(json))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint("Error fetching members: $e");
+    } finally {
+      _isLoadingDetails = false;
       notifyListeners();
     }
   }
@@ -178,14 +260,15 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
     String text, {
     Message? replyingTo,
     String? replyingToName,
+    String? senderId,
   }) async {
     final cleanContent = text.trim();
     if (currentChatUserId == null || cleanContent.isEmpty) return;
-
     final targetId = currentChatUserId!;
     final clientMessageId = "cli_${DateTime.now().millisecondsSinceEpoch}";
 
     QuotedMessage? quoted;
+
     if (replyingTo != null) {
       quoted = QuotedMessage(
         id: replyingTo.id,
@@ -205,30 +288,39 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
       replyToMessageId: replyingTo?.id,
       quotedMessage: quoted,
     );
-
     activeChat.add(optimisticMsg);
     notifyListeners();
 
     try {
-      await _api.sendMessage(
-        targetId,
-        cleanContent,
-        replyToMessageId: replyingTo?.id,
-      );
+      isCurrentChatGroup && senderId != null
+          ? _ws.sendGroupChat(
+              messageId: "",
+              groupId: targetId,
+              content: cleanContent,
+              senderId: senderId,
+              replyToMessageId: replyingTo?.id,
+            )
+          : _ws.sendChat(
+              messageId: "",
+              receiverId: targetId,
+              content: cleanContent,
+              replyToMessageId: replyingTo?.id,
+            );
       unawaited(loadInbox());
     } catch (e) {
-      if (e is DioException) {
-        debugPrint("BACKEND REJECTION REASON: ${e.response?.data}");
-      } else {
-        debugPrint("Failed to send message: $e");
-      }
+      debugPrint("Failed to send message: $e");
       activeChat.removeWhere((msg) => msg.id == clientMessageId);
       notifyListeners();
     }
   }
+
   void sendTypingNotification(bool typing) {
     if (currentChatUserId != null) {
-      _ws.sendTyping(targetId: currentChatUserId!, isTyping: typing);
+      _ws.sendTyping(
+        receiverId: isCurrentChatGroup ? null : currentChatUserId,
+        groupId: isCurrentChatGroup ? currentChatUserId : null,
+        isTyping: typing,
+      );
     }
   }
 
@@ -236,12 +328,25 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
     final String? type = data['type'];
     if (type == null) return;
 
-    final String? senderId =
-        data['sender_id'] ?? data['sender'] ?? data['receiver_id'];
-    final String? cleanSender = senderId?.trim().toLowerCase();
     final String? cleanCurrentChat = currentChatUserId?.trim().toLowerCase();
-    final bool isCurrentChat =
-        cleanSender != null && cleanSender == cleanCurrentChat;
+
+    bool isCurrentChat = false;
+    if (cleanCurrentChat != null) {
+      if (isCurrentChatGroup) {
+        final String? eventGroupId = data['group_id']
+            ?.toString()
+            .trim()
+            .toLowerCase();
+        isCurrentChat = (eventGroupId == cleanCurrentChat);
+      } else {
+        final String? eventSenderId =
+            (data['sender_id'] ?? data['sender'] ?? data['receiver_id'])
+                ?.toString()
+                .trim()
+                .toLowerCase();
+        isCurrentChat = (eventSenderId == cleanCurrentChat);
+      }
+    }
 
     switch (type) {
       case 'user_status':
@@ -250,11 +355,10 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
             ?.toString()
             .trim()
             .toLowerCase();
-        if (eventUserId == cleanCurrentChat) {
+        if (eventUserId == cleanCurrentChat && !isCurrentChatGroup) {
           isPeerOnline = data['online'] == true || data['content'] == 'online';
           notifyListeners();
-
-          if (isPeerOnline) unawaited(syncActiveChatSilently());
+          // if (isPeerOnline) unawaited(syncActiveChatSilently());
         }
         break;
 
@@ -262,7 +366,10 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
       case 'message':
         if (isCurrentChat) {
           activeChat.add(Message.fromJson(data));
-          _ws.sendReadReceipt(targetId: currentChatUserId!);
+          _ws.sendReadReceipt(
+            receiverId: isCurrentChatGroup ? null : currentChatUserId,
+            groupId: isCurrentChatGroup ? currentChatUserId : null,
+          );
           notifyListeners();
         }
         loadInbox();
@@ -272,16 +379,15 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
         if (isCurrentChat) {
           final bool nowTyping =
               data['content'] == 'true' || data['content'] == true;
-
           if (isPeerTyping != nowTyping) {
             isPeerTyping = nowTyping;
             notifyListeners();
 
-            if (!isPeerTyping) {
-              Future.delayed(const Duration(milliseconds: 500), () {
-                unawaited(syncActiveChatSilently());
-              });
-            }
+            // if (!isPeerTyping) {
+            //   Future.delayed(const Duration(milliseconds: 500), () {
+            //     unawaited(syncActiveChatSilently());
+            //   });
+            // }
           }
         }
         break;
@@ -293,18 +399,26 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
         final String payloadReceiver = (data['receiver_id'] ?? '')
             .toString()
             .toLowerCase();
+        final String payloadGroup = (data['group_id'] ?? '')
+            .toString()
+            .toLowerCase();
         final String safeChatId = (currentChatUserId ?? '').toLowerCase();
 
-        final bool isRelevantToThisChat =
-            safeChatId.isNotEmpty &&
-            (payloadSender == safeChatId || payloadReceiver == safeChatId);
+        bool isRelevantToThisChat = false;
+        if (safeChatId.isNotEmpty) {
+          if (isCurrentChatGroup) {
+            isRelevantToThisChat = (payloadGroup == safeChatId);
+          } else {
+            isRelevantToThisChat =
+                (payloadSender == safeChatId || payloadReceiver == safeChatId);
+          }
+        }
 
         if (isRelevantToThisChat) {
           bool updated = false;
 
           activeChat = activeChat.map((msg) {
             final String msgSenderId = msg.senderId.trim().toLowerCase();
-
             if (!msg.isRead &&
                 (msgSenderId == 'me' || msgSenderId != safeChatId)) {
               updated = true;
@@ -316,8 +430,7 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
           if (updated) {
             notifyListeners();
           }
-
-          unawaited(syncActiveChatSilently());
+          // unawaited(syncActiveChatSilently());
         }
         break;
     }
@@ -328,15 +441,16 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
     final String targetUid = currentChatUserId!;
 
     try {
-      final res = await _api.getChatHistory(targetUid);
+      final res = await _api.getChatHistory(
+        targetUid,
+        isGroup: isCurrentChatGroup,
+      );
       if (currentChatUserId != targetUid) return;
 
       final targetList = _extractDataList(res.data, ['messages']);
-      final loadedMessages = await Isolate.run(() {
-        return targetList.reversed
-            .map((json) => Message.fromJson(json))
-            .toList();
-      });
+      final loadedMessages = targetList.reversed
+          .map((json) => Message.fromJson(json))
+          .toList();
 
       if (currentChatUserId != targetUid) return;
 
@@ -357,8 +471,7 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
               createdAt: loadedMessages[i].createdAt,
               isRead: loadedMessages[i].isRead,
               replyToMessageId: loadedMessages[i].replyToMessageId,
-              quotedMessage:
-                  existingMsg.quotedMessage,
+              quotedMessage: existingMsg.quotedMessage,
             );
           }
         }
@@ -374,7 +487,10 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
       if (hasChanges) {
         activeChat = loadedMessages;
         notifyListeners();
-        _ws.sendReadReceipt(targetId: targetUid);
+        _ws.sendReadReceipt(
+          receiverId: isCurrentChatGroup ? null : targetUid,
+          groupId: isCurrentChatGroup ? targetUid : null,
+        );
       }
     } catch (e) {
       debugPrint("Silent chat sync fail: $e");
@@ -395,44 +511,88 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> loadInbox() async {
     try {
-      final responses = await Future.wait([
-        _api.getConversations(),
-        _api.getGroups(),
-      ]);
+      final response = await _api.getConversations();
+      // debugPrint("RAW INBOX DATA: ${response.data}");
+      final rawData = _parseResponse(response.data, ['conversations']);
 
-      final conversationRes = responses[0];
-      final groupRes = responses[1];
+      List<InboxItem> combinedInbox = [];
 
-      final rawConversations = _extractDataList(conversationRes.data, [
-        'conversations',
-      ]);
-      final rawGroups = _extractDataList(groupRes.data, ['groups']);
+      for (var json in rawData) {
+        try{final bool isGroup =
+            json['is_group'] == true || json['type'] == 'group';
 
-      final mappedConversations = rawConversations
-          .map((json) => Conversation.fromJson(json))
-          .map((conv) => InboxItem.fromConversation(conv))
-          .toList();
+        if (isGroup) {
+          combinedInbox.add(InboxItem.fromGroup(Group.fromJson(json)));
 
-      final mappedGroups = rawGroups
-          .map((json) => Group.fromJson(json))
-          .map((group) => InboxItem.fromGroup(group))
-          .toList();
+          final String? groupId = json['id'];
+            if (groupId != null) {
+              _api
+                  .getGroupMembers(groupId)
+                  .then((res) {
+                    final members = _extractDataList(res.data, ['members']);
+                    bool updatedCache = false;
+                    for (var m in members) {
+                      final uid = m['user_id'].toString();
+                      final name = m['display_name'] ?? 'Member';
+                      if (userCache[uid] != name) {
+                        userCache[uid] = name;
+                        updatedCache = true;
+                      }
+                    }
+                    if (updatedCache) notifyListeners();
+                  })
+                  .catchError((_) {});
+            }
 
-      final combinedInbox = [...mappedConversations, ...mappedGroups];
+        } else {
+          combinedInbox.add(
+            InboxItem.fromConversation(Conversation.fromJson(json)),
+          );
+        }} catch (e){
+          debugPrint("❌ CRASH ON ITEM PARSE: $e");
+          debugPrint("❌ BAD JSON OBJECT: $json");
+        }
+      }
+
       combinedInbox.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      if (inbox.length != combinedInbox.length ||
-          (inbox.isNotEmpty &&
-              combinedInbox.isNotEmpty &&
-              inbox.first.id != combinedInbox.first.id) ||
-          (inbox.isNotEmpty &&
-              combinedInbox.isNotEmpty &&
-              inbox.first.lastMessage != combinedInbox.first.lastMessage)) {
+      if (_hasInboxChanged(inbox, combinedInbox)) {
         inbox = combinedInbox;
         notifyListeners();
+        if (currentChatUserId != null) {
+          unawaited(syncActiveChatSilently());
+        }
       }
-    } catch (e) {
-      debugPrint("Inbox read error: $e");
+    } catch (e, stackTrace) {
+      debugPrint("❌ MAJOR INBOX READ ERROR: $e");
+      debugPrint("❌ STACK TRACE: $stackTrace");
     }
+  }
+
+  List<dynamic> _parseResponse(dynamic data, List<String> primaryKeys) {
+    if (data is List) return data;
+
+    if (data is Map) {
+      for (var key in primaryKeys) {
+        if (data.containsKey(key) && data[key] is List) return data[key];
+      }
+      if (data.containsKey('data') && data['data'] is List) return data['data'];
+    }
+    return [];
+  }
+
+  bool _hasInboxChanged(List<InboxItem> oldList, List<InboxItem> newList) {
+    if (oldList.length != newList.length) return true;
+    for (int i = 0; i < oldList.length; i++) {
+      final old = oldList[i];
+      final current = newList[i];
+      if (old.id != current.id ||
+          old.lastMessage != current.lastMessage ||
+          old.timestamp != current.timestamp ||
+          old.unreadCount != current.unreadCount) {
+        return true;
+      }
+    }
+    return false;
   }
 }

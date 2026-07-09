@@ -2,9 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:mobile/controllers/chat.dart';
-import 'package:mobile/pages/settings%20pages/accounts.dart';
 import 'package:mobile/pages/settings_page.dart';
-import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/services/auth.dart';
 import 'package:mobile/widgets/custom_cards.dart';
 import 'package:provider/provider.dart';
@@ -46,10 +44,14 @@ class _HomePageState extends State<HomePage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final chatController = context.read<ChatController>();
-      final authService = AuthService();
-      final token = await authService.getToken();
+
+      final token = await AuthService().getToken();
+
+      if (!mounted) return;
+
       if (token != null) {
-        await chatController.initSession(token);
+        await chatController.initSession();
+        chatController.loadInbox();
       }
     });
   }
@@ -136,10 +138,10 @@ class _HomePageState extends State<HomePage> {
             child: Container(
               height: 68,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withValues(alpha: 0.35),
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: theme.colorScheme.surface.withValues(alpha: 0.45),
+                  color: theme.colorScheme.surface.withValues(alpha: 0.8),
                   width: 1.5,
                 ),
                 boxShadow: [
@@ -178,16 +180,16 @@ class _HomePageState extends State<HomePage> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surface.withValues(
-                                alpha: 0.85,
+                                alpha: 0.8,
                               ),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
                                   color: theme.colorScheme.primary.withValues(
-                                    alpha: 0.08,
+                                    alpha: 0.4,
                                   ),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                                  blurRadius: 20,
+                                  // offset: const Offset(0, 0),
                                 ),
                               ],
                             ),
@@ -255,9 +257,7 @@ class _HomePageState extends State<HomePage> {
               child: BackdropFilter(
                 enabled: true,
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(
-                  color: theme.scaffoldBackgroundColor.withValues(alpha: 0.7),
-                ),
+                child: Container(color: theme.colorScheme.surface),
               ),
             ),
             leading: _isSelectionMode
@@ -279,7 +279,9 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: CircleAvatar(
                           radius: 18,
-                          backgroundColor: theme.colorScheme.primaryContainer,
+                          backgroundColor: theme.colorScheme.primary.withValues(
+                            alpha: 0.15,
+                          ),
                           child: Icon(
                             Icons.person,
                             color: theme.colorScheme.primary,
@@ -372,6 +374,7 @@ class _HomePageState extends State<HomePage> {
                 !_isSelectionMode
                     ? PopupMenuButton<String>(
                         iconColor: theme.colorScheme.onSurface,
+                        color: theme.scaffoldBackgroundColor,
                         onSelected: (String value) {},
                         borderRadius: BorderRadius.circular(20),
                         itemBuilder: (context) => [
@@ -522,19 +525,50 @@ class _HomePageState extends State<HomePage> {
                   opacity: (_isFabVisible && !_isSelectionMode) ? 1.0 : 0.0,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: FloatingActionButton(
-                      heroTag: "fab_pen",
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      child: const Icon(Icons.edit),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const NewChatPage(),
+                    child: 
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: ClipRRect(
+                        borderRadius: BorderRadiusGeometry.circular(20),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surface.withValues(alpha: 0.5),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surface.withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.edit,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const NewChatPage(),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ),
                 ),

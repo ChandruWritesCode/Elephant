@@ -19,65 +19,73 @@ void showUserCard(BuildContext context) {
       final user = context.read<AuthState>().currentUser;
       final String qrData = user?.username ?? 'unknown';
 
-      return Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Share Your QR!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+      return BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Dialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.surface,
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Share Your QR!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              QrImageView(
-                data: qrData,
-                version: QrVersions.auto,
-                size: 200.0,
-                backgroundColor: Colors.white,
-                eyeStyle: const QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: Colors.black87,
+                QrImageView(
+                  data: qrData,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                  eyeStyle: QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  dataModuleStyle: QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
-                dataModuleStyle: const QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: Colors.black87,
-                ),
-              ),
 
-              const SizedBox(height: 16),
-              Text(
-                '@$qrData',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w500,
+                const SizedBox(height: 16),
+                Text(
+                  '@$qrData',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () => Navigator.pop(context),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF1890FF),
-                  minimumSize: const Size(double.infinity, 45),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    minimumSize: const Size(double.infinity, 45),
+                  ),
+                  child: const Text('Close'),
                 ),
-                child: const Text('Close'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
     },
   );
 }
-
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -87,6 +95,7 @@ class SettingsPage extends StatelessWidget {
     final user = context.watch<AuthState>().currentUser;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -102,16 +111,18 @@ class SettingsPage extends StatelessWidget {
               child: BackdropFilter(
                 enabled: true,
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(
-                  color: const Color.fromARGB(78, 255, 255, 255),
-                ),
+                child: Container(color: Theme.of(context).colorScheme.surface),
               ),
             ),
             actionsPadding: const EdgeInsets.symmetric(horizontal: 15),
-            title: const Text(
+            title: Text(
               'Settings',
-              style: TextStyle(letterSpacing: 1, fontWeight: FontWeight.w400),
-              key: ValueKey('title'),
+              style: TextStyle(
+                letterSpacing: 1,
+                fontWeight: FontWeight.w400,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              key: const ValueKey('title'),
             ),
 
             actions: [
@@ -125,59 +136,77 @@ class SettingsPage extends StatelessWidget {
           ),
           SliverList(
             delegate: SliverChildListDelegate([
-              Container(
-                margin: EdgeInsets.all(20),
-                padding: EdgeInsets.all(20),
-                width: double.infinity,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(width: 2, color: Colors.black26),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Hero(
-                      tag: 'User Profile',
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundImage: user?.avatarUrl != null
-                            ? NetworkImage(user!.avatarUrl!)
-                            : null,
-                        child: user?.avatarUrl == null
-                            ? const Icon(Icons.person, size: 50)
-                            : null,
-                      ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => AccountsSettings()),
+                  );
+                },
+                child: Container(
+                  margin: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(20),
+                  width: double.infinity,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      width: 1,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                     ),
-                    SizedBox(width: 20),
-                    Hero(
-                      tag: 'User Data',
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Spacer(),
-                            Text(
-                              user != null ? user.displayName : 'Profile N/A',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              user != null
-                                  ? '@${user.username}'
-                                  : 'Could not load profile',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            Spacer(),
-                          ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Hero(
+                        tag: 'User Profile',
+                        child: CircleAvatar(
+                          radius: 40,
+                          backgroundImage: user?.avatarUrl != null
+                              ? NetworkImage(user!.avatarUrl!)
+                              : null,
+                          child: user?.avatarUrl == null
+                              ? const Icon(Icons.person, size: 50)
+                              : null,
                         ),
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 20),
+                      Hero(
+                        tag: 'User Data',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Spacer(),
+                              Text(
+                                user != null ? user.displayName : 'Profile N/A',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
+                              ),
+                              Text(
+                                user != null
+                                    ? '@${user.username}'
+                                    : 'Could not load profile',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              Spacer(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -186,9 +215,12 @@ class SettingsPage extends StatelessWidget {
                 margin: EdgeInsets.all(20),
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(width: 2, color: Colors.black26),
+                  border: Border.all(
+                    width: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -259,7 +291,7 @@ Widget _settingsOption({
   required BuildContext context,
   required IconData icon,
   required String settingName,
-  Widget trailing = const Icon(Icons.chevron_right),
+  Widget trailing = const SizedBox.shrink(),
   Widget? whereTo,
 }) {
   return InkWell(
@@ -276,11 +308,32 @@ Widget _settingsOption({
       height: 60,
       child: Row(
         children: [
-          CircleAvatar(child: Icon(icon)),
-          SizedBox(width: 20),
-          Text(settingName),
-          Spacer(),
-          trailing,
+          CircleAvatar(
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest,
+            child: Icon(
+              icon,
+              color: Theme.of(context).colorScheme.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 20),
+          Text(
+            settingName,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+            ),
+          ),
+          const Spacer(),
+          trailing == const SizedBox.shrink()
+              ? Icon(
+                  Icons.chevron_right,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )
+              : trailing,
         ],
       ),
     ),
