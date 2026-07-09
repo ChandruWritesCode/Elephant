@@ -9,6 +9,8 @@ configurations.all {
     exclude(group = "com.google.android.play", module = "core-common")
     exclude(group = "com.google.android.play", module = "feature-delivery")
     exclude(group = "com.google.android.play", module = "app-update")
+    exclude(group = "com.google.android.play", module = "tasks")
+    exclude(group = "com.google.android.play", module = "split-install")
 }
 
 configure<com.android.build.api.dsl.ApplicationExtension> {
@@ -50,6 +52,23 @@ flutter {
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+project.afterEvaluate {
+    tasks.configureEach {
+        if (name.contains("minifyReleaseWithR8") || name.contains("compileReleaseJavaWithJavac")) {
+            doFirst {
+                val intermediatesDir = File(project.buildDir, "intermediates/classes/release")
+                if (intermediatesDir.exists()) {
+                    val playCoreDir = File(intermediatesDir, "com/google/android/play/core")
+                    if (playCoreDir.exists()) {
+                        playCoreDir.deleteRecursively()
+                        logger.lifecycle("FOSS SANITIZER: Successfully purged pre-compiled Play Core binaries from intermediate pools.")
+                    }
+                }
+            }
+        }
     }
 }
 
