@@ -4,6 +4,13 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+configurations.all {
+    exclude(group = "com.google.android.play", module = "core")
+    exclude(group = "com.google.android.play", module = "core-common")
+    exclude(group = "com.google.android.play", module = "feature-delivery")
+    exclude(group = "com.google.android.play", module = "app-update")
+}
+
 configure<com.android.build.api.dsl.ApplicationExtension> {
     namespace = "in.commandlinecoding.elephant"
     compileSdk = flutter.compileSdkVersion
