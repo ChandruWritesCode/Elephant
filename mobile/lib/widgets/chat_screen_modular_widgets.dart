@@ -30,7 +30,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: AppBar(
-          backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.4),
+          backgroundColor: theme.colorScheme.surface,
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
@@ -45,7 +45,10 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                   tag: 'profile',
                   child: CircleAvatar(
                     backgroundColor: theme.colorScheme.primaryContainer,
-                    child: Icon(Icons.person, color: theme.colorScheme.primary),
+                    child: Icon(
+                      Icons.person,
+                      color: theme.colorScheme.onPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -124,6 +127,7 @@ class ChatBubble extends StatelessWidget {
     Color primaryColor,
     Color onPrimary,
     Color onSurface,
+    BuildContext context,
   ) {
     return MarkdownStyleSheet(
       p: TextStyle(color: isMe ? onPrimary : onSurface, fontSize: 15),
@@ -145,7 +149,7 @@ class ChatBubble extends StatelessWidget {
         backgroundColor: isMe
             ? primaryColor.withValues(alpha: 0.8)
             : Colors.grey.withValues(alpha: 0.3),
-        color: isMe ? onPrimary : Colors.red[800],
+        color: isMe ? onPrimary : Theme.of(context).colorScheme.error,
         fontFamily: 'monospace',
       ),
       a: TextStyle(
@@ -248,6 +252,7 @@ class ChatBubble extends StatelessWidget {
                   theme.colorScheme.primary,
                   theme.colorScheme.onPrimary,
                   theme.colorScheme.onSurface,
+                  context,
                 ),
               ),
               const SizedBox(height: 4),
@@ -271,7 +276,9 @@ class ChatBubble extends StatelessWidget {
                         isRead ? Icons.done_all : Icons.done,
                         size: 14,
                         color: isRead
-                            ? Colors.lightBlueAccent
+                            ? (isMe
+                                  ? Colors.lightBlueAccent
+                                  : theme.colorScheme.primary)
                             : theme.colorScheme.onPrimary.withValues(
                                 alpha: 0.7,
                               ),
@@ -379,7 +386,15 @@ class _ChatInputAreaState extends State<ChatInputArea> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
-          color: Colors.transparent,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: theme.colorScheme.surface.withValues(alpha: 0.8),
+                width: 1,
+              ),
+            ),
+          ),
           padding: EdgeInsets.only(
             left: 12.0,
             right: 12.0,
@@ -469,7 +484,10 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: IconButton(
                   icon: _isOverLimit
-                      ? const Icon(Icons.not_interested)
+                      ? Icon(
+                          Icons.not_interested,
+                          color: theme.colorScheme.error,
+                        )
                       : Icon(Icons.send, color: theme.colorScheme.primary),
                   onPressed: _isOverLimit ? null : _submit,
                 ),

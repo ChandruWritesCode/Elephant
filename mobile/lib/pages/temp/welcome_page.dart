@@ -1,4 +1,4 @@
-import 'package:mobile/pages/phone_number_page.dart';
+import 'package:mobile/pages/temp/phone_number_page.dart';
 import 'package:mobile/players/intro_animation.dart';
 import 'package:flutter/material.dart';
 

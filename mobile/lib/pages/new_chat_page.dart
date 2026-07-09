@@ -37,11 +37,11 @@ class _NewChatPageState extends State<NewChatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
           "Find by Username",
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -49,29 +49,37 @@ class _NewChatPageState extends State<NewChatPage> {
         content: TextField(
           controller: inputController,
           autofocus: true,
-          style: const TextStyle(color: Colors.black87),
-          decoration: const InputDecoration(
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          decoration: InputDecoration(
             hintText: "Enter minimum 3 characters...",
-            hintStyle: TextStyle(color: Colors.black38),
+            hintStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.black26),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
             focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFF1890FF)),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
+            child: Text(
               "Cancel",
-              style: TextStyle(color: Colors.black54),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1890FF),
+              backgroundColor: Theme.of(context).colorScheme.primary,
             ),
             onPressed: () {
               final text = inputController.text.trim();
@@ -83,16 +91,24 @@ class _NewChatPageState extends State<NewChatPage> {
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
                       "Search query must be at least 3 characters.",
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
                     ),
-                    backgroundColor: Colors.redAccent,
+                   backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.errorContainer,
                   ),
                 );
               }
             },
-            child: const Text("Search", style: TextStyle(color: Colors.white)),
+            child: Text(
+              "Search",
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+            ),
           ),
         ],
       ),
@@ -108,13 +124,17 @@ class _NewChatPageState extends State<NewChatPage> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: CircleAvatar(
         radius: 20,
-        backgroundColor: const Color(0xFFF0F2F5),
-        child: Icon(icon, color: Colors.black54, size: 20),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
       ),
       title: Text(
         label,
-        style: const TextStyle(
-          color: Colors.black87,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
@@ -131,16 +151,18 @@ class _NewChatPageState extends State<NewChatPage> {
     final bool hasValidQueryLength = searchInput.length >= 3;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: const Text(
+        iconTheme: IconThemeData(
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+        title: Text(
           'New message',
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -171,14 +193,23 @@ class _NewChatPageState extends State<NewChatPage> {
             child: TextField(
               controller: _searchController,
               onChanged: (val) => _onSearchChanged(val, chatState),
-              style: const TextStyle(color: Colors.black87),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: "Name, username or number",
-                hintStyle: const TextStyle(color: Colors.black38, fontSize: 15),
-                prefixIcon: const Icon(Icons.search, color: Colors.black38),
+                hintStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 15,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 suffixIcon: isSearching
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.black38),
+                        icon: Icon(
+                          Icons.clear,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           chatState.queryUsers("");
@@ -186,7 +217,9 @@ class _NewChatPageState extends State<NewChatPage> {
                       )
                     : null,
                 filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(28),
@@ -198,26 +231,31 @@ class _NewChatPageState extends State<NewChatPage> {
           Expanded(
             child: isSearching
                 ? (!hasValidQueryLength
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             "Type at least 3 characters to search...",
                             style: TextStyle(
-                              color: Colors.black45,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                               fontSize: 14,
                             ),
                           ),
                         )
                       : chatState.isSearchLoading
-                      ? const Center(
+                      ? Center(
                           child: CircularProgressIndicator(
-                            color: Color(0xFF1890FF),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         )
                       : chatState.contactSearchResults.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             "No users found",
-                            style: TextStyle(color: Colors.grey, fontSize: 15),
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant, fontSize: 15),
                           ),
                         )
                       : ListView.builder(
@@ -233,23 +271,31 @@ class _NewChatPageState extends State<NewChatPage> {
                                 horizontal: 16,
                                 vertical: 4,
                               ),
-                              leading: const CircleAvatar(
-                                backgroundColor: Color(0xFFD6E4FF),
+                              leading: CircleAvatar(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
                                 child: Icon(
                                   Icons.person,
-                                  color: Color(0xFF1890FF),
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                               title: Text(
                                 displayName,
-                                style: const TextStyle(
-                                  color: Colors.black87,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               subtitle: Text(
                                 "@$username",
-                                style: const TextStyle(color: Colors.black45),
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                               ),
                               onTap: () {
                                 final String uid = user['id'];
@@ -291,12 +337,14 @@ class _NewChatPageState extends State<NewChatPage> {
                         label: "Find by phone number",
                         onTap: () {},
                       ),
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16, top: 20, bottom: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 20, bottom: 8),
                         child: Text(
                           "Recent Contacts",
                           style: TextStyle(
-                            color: Colors.black38,
+                           color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
@@ -311,23 +359,33 @@ class _NewChatPageState extends State<NewChatPage> {
                                   horizontal: 16,
                                   vertical: 4,
                                 ),
-                                leading: const CircleAvatar(
-                                  backgroundColor: Color(0xFFE8E8E8),
+                                leading: CircleAvatar(
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
                                   child: Icon(
                                     Icons.person,
-                                    color: Colors.black54,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                                 title: Text(
                                   thread.title,
-                                  style: const TextStyle(
-                                    color: Colors.black87,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 subtitle: Text(
                                   "@${thread.username}",
-                                  style: const TextStyle(color: Colors.black45),
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
                                 onTap: () {
                                   chatState.openChat(thread.id);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/auth.dart';
@@ -61,115 +62,12 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
     }
   }
 
-  void _showAddParticipantSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'Add Participants',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search users...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onChanged: (query) {
-                      // TODO: Implement your user search logic here
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: Consumer<GroupController>(
-                    builder: (context, groupController, child) {
-                      if (groupController.isLoading) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      // TODO: Replace with your actual searched users list
-                      final searchedUsers =
-                          []; // e.g., authController.searchedUsers
-
-                      if (searchedUsers.isEmpty) {
-                        return const Center(
-                          child: Text('Search for users to add.'),
-                        );
-                      }
-
-                      return ListView.builder(
-                        controller: scrollController,
-                        itemCount: searchedUsers.length,
-                        itemBuilder: (context, index) {
-                          final user = searchedUsers[index];
-                          return ListTile(
-                            leading: const CircleAvatar(
-                              child: Icon(Icons.person),
-                            ),
-                            title: Text(user.displayName),
-                            trailing: IconButton(
-                              icon: const Icon(
-                                Icons.add_circle,
-                                color: Colors.teal,
-                              ),
-                              onPressed: () async {
-                                final success = await context
-                                    .read<GroupController>()
-                                    .addMemberToGroup(widget.chatId, user.id);
-
-                                if (success && mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${user.displayName} added!',
-                                      ),
-                                    ),
-                                  );
-                                  // Refresh the group members list behind the sheet
-                                  context
-                                      .read<ChatController>()
-                                      .fetchGroupMembers(widget.chatId);
-                                  Navigator.pop(context); // Close sheet
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final chatController = context.watch<ChatController>();
 
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(),
@@ -224,9 +122,9 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
           _ActionIcon(
             icon: Icons.search,
             label: 'Search',
-            onTap: (){
+            onTap: () {
               Navigator.pop(context, 'start_search');
-            }
+            },
           ),
         ],
       ),
@@ -239,10 +137,7 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
         title: const Text('Media, links, and docs'),
         trailing: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('0'), // Replace with actual count later
-            Icon(Icons.chevron_right),
-          ],
+          children: [Text('0'), Icon(Icons.chevron_right)],
         ),
         onTap: () {
           // TODO: Navigate to Media Page (API calls later)
@@ -314,7 +209,7 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
     final isCurrentUserAdmin = currentUserMember?.role == 'admin';
 
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -322,8 +217,8 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
             padding: const EdgeInsets.all(16.0),
             child: Text(
               '${members.length} participants',
-              style: const TextStyle(
-                color: Colors.grey,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -331,27 +226,33 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
 
           if (isCurrentUserAdmin)
             ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.teal,
-                child: Icon(Icons.person_add, color: Colors.white),
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.person_add,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
               title: const Text('Add participants'),
               onTap: () {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
-                  backgroundColor: Colors.white,
+                  backgroundColor: Colors.transparent,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                   ),
-                  builder: (context) => _AddParticipantSheet(chatId: widget.chatId),
+                  builder: (context) =>
+                      _AddParticipantSheet(chatId: widget.chatId),
                 );
               },
             ),
 
           if (isLoading && members.isEmpty)
             const Padding(
-              padding: EdgeInsets.all(32.0),
+              padding: EdgeInsets.only(bottom: 32.0),
               child: Center(child: CircularProgressIndicator()),
             )
           else
@@ -374,9 +275,12 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
                   ),
                   title: Text(member.displayName),
                   subtitle: isThisUserAdmin
-                      ? const Text(
+                      ? Text(
                           'Admin',
-                          style: TextStyle(color: Colors.teal, fontSize: 12),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 12,
+                          ),
                         )
                       : null,
                   onTap: () =>
@@ -389,7 +293,6 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
     );
   }
 
-  // Action when clicking a group member
   void _showMemberDetailsDialog(ChatMember member, bool isCurrentUserAdmin) {
     showModalBottomSheet(
       context: context,
@@ -432,7 +335,9 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
                             child: const Text('Cancel'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(context, true),
+                            onPressed: () {
+                              Navigator.pop(context, true);
+                            },
                             child: const Text(
                               'Remove',
                               style: TextStyle(color: Colors.red),
@@ -489,7 +394,7 @@ class _SectionContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(color: Colors.white, child: child);
+    return Material(color: Theme.of(context).colorScheme.surface, child: child);
   }
 }
 
@@ -508,12 +413,9 @@ class _ActionIcon extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: Column(
           children: [
-            Icon(icon, color: Theme.of(context).primaryColor, size: 28),
+            Icon(icon, size: 28),
             const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(color: Theme.of(context).primaryColor),
-            ),
+            Text(label),
           ],
         ),
       ),
@@ -549,13 +451,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         chatState.queryUsers(value);
       }
     });
-    setState(() {
-      
-    }); 
+    setState(() {});
   }
 
   Future<void> _addMember(String userId, String displayName) async {
-    // Hide keyboard
     FocusScope.of(context).unfocus();
 
     final groupCtrl = context.read<GroupController>();
@@ -567,9 +466,8 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$displayName added to the group!')),
       );
-      // Refresh the group members list
       chatCtrl.fetchGroupMembers(widget.chatId);
-      Navigator.pop(context); // Close the sheet
+      Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(
         context,
@@ -586,73 +484,76 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     final bool isSearching = searchInput.isNotEmpty;
     final bool hasValidQueryLength = searchInput.length >= 3;
 
-    // Get current member IDs to filter them out of search results & recents
     final currentMemberIds = chatState.currentGroupMembers
         .map((m) => m.userId)
         .toSet();
 
-    return Padding(
-      // Ensure the sheet rises with the keyboard
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        height:
-            MediaQuery.of(context).size.height * 0.7, // Take up 70% of screen
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          children: [
-            const Text(
-              'Add Participants',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => _onSearchChanged(val, chatState),
-                decoration: InputDecoration(
-                  hintText: "Search name or username",
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: isSearching
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            chatState.queryUsers("");
-                            setState((){});
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              children: [
+                const Text(
+                  'Add Participants',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) => _onSearchChanged(val, chatState),
+                    decoration: InputDecoration(
+                      hintText: "Search name or username",
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: isSearching
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                chatState.queryUsers("");
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 10),
+                const SizedBox(height: 10),
 
-            // Show Loading Indicator for Add API call
-            if (groupState.isLoading)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: LinearProgressIndicator(),
-              ),
+                if (groupState.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: LinearProgressIndicator(),
+                  ),
 
-            Expanded(
-              child: isSearching
-                  ? _buildSearchResults(
-                      chatState,
-                      currentMemberIds,
-                      hasValidQueryLength,
-                    )
-                  : _buildRecentContacts(chatState, currentMemberIds),
+                Expanded(
+                  child: isSearching
+                      ? _buildSearchResults(
+                          chatState,
+                          currentMemberIds,
+                          hasValidQueryLength,
+                        )
+                      : _buildRecentContacts(chatState, currentMemberIds),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -672,7 +573,6 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Filter out users who are already in the group
     final results = chatState.contactSearchResults
         .where((user) => !currentMemberIds.contains(user['id']))
         .toList();
@@ -694,7 +594,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           title: Text(displayName),
           subtitle: Text("@$username"),
           trailing: IconButton(
-            icon: const Icon(Icons.add_circle, color: Colors.teal),
+            icon: Icon(
+              Icons.add_circle,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             onPressed: () => _addMember(uid, displayName),
           ),
         );
@@ -706,7 +609,6 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     ChatController chatState,
     Set<String> currentMemberIds,
   ) {
-    // Filter to only 1-on-1 chats of users NOT currently in the group
     final recents = chatState.inbox
         .where(
           (thread) => !thread.isGroup && !currentMemberIds.contains(thread.id),
@@ -725,12 +627,12 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(left: 16, top: 8, bottom: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
                 child: Text(
                   "Recent Contacts",
                   style: TextStyle(
-                    color: Colors.black38,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -751,7 +653,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       title: Text(thread.title),
       subtitle: Text("@${thread.username}"),
       trailing: IconButton(
-        icon: const Icon(Icons.add_circle, color: Colors.teal),
+        icon: Icon(
+          Icons.add_circle,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         onPressed: () => _addMember(thread.id, thread.title),
       ),
     );
