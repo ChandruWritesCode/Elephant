@@ -57,14 +57,23 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 
 project.afterEvaluate {
     tasks.configureEach {
-        if (name.contains("minifyReleaseWithR8") || name.contains("compileReleaseJavaWithJavac")) {
+        if (name.contains("minifyReleaseWithR8") || name.contains("minifyReleaseWithProguard") || name.contains("dexBuilderRelease")) {
             doFirst {
-                val intermediatesDir = File(project.buildDir, "intermediates/classes/release")
-                if (intermediatesDir.exists()) {
-                    val playCoreDir = File(intermediatesDir, "com/google/android/play/core")
-                    if (playCoreDir.exists()) {
-                        playCoreDir.deleteRecursively()
-                        logger.lifecycle("FOSS SANITIZER: Successfully purged pre-compiled Play Core binaries from intermediate pools.")
+                logger.lifecycle("FOSS SANITIZER: Active. Sweeping intermediate files for non-free binaries...")
+
+                val searchDirs = listOf(
+                    File(project.layout.buildDirectory.asFile.get(), "intermediates/classes/release"),
+                    File(project.layout.buildDirectory.asFile.get(), "intermediates/javac/release")
+                )
+                
+                for (dir in searchDirs) {
+                    if (dir.exists()) {
+                        dir.walkTopDown().forEach { file ->
+                            if (file.isDirectory && file.absolutePath.endsWith("com/google/android/play/core")) {
+                                file.deleteRecursively()
+                                logger.lifecycle("Successfully deleted shaded directory: ${file.absolutePath}")
+                            }
+                        }
                     }
                 }
             }
