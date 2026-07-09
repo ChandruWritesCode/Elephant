@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,12 +15,14 @@ class ChatPage extends StatefulWidget {
   final String chatUserId;
   final String displayName;
   final bool isGroup;
+  final bool isNew;
 
   const ChatPage({
     super.key,
     required this.chatUserId,
     required this.displayName,
     this.isGroup = false,
+    this.isNew = false,
   });
 
   @override
@@ -61,6 +64,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _chatController.openChat(widget.chatUserId, isGroup: widget.isGroup);
+        if (widget.isGroup && widget.isNew) {
+          _sendMessage('Hey Everyone!!');
+        }
       }
     });
   }
@@ -93,21 +99,27 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   }
 
   void _scrollToAndHighlight(String messageId) async {
+    setState(() {
+      _isSearchMode = false;
+      _chatSearchController.clear();
+      _searchResults.clear();
+    });
+
     final chatState = context.read<ChatController>();
     final activeChat = chatState.activeChat;
+    final bool isTyping = chatState.isPeerTyping;
 
     final targetIndex = activeChat.indexWhere((msg) => msg.id == messageId);
 
     if (targetIndex != -1 && _itemScrollController.isAttached) {
       final int realVisualIndex =
-          (activeChat.length - 1 - targetIndex) +
-          (chatState.isPeerTyping ? 2 : 1);
+          (activeChat.length - 1 - targetIndex) + (isTyping ? 3 : 2);
 
       await _itemScrollController.scrollTo(
         index: realVisualIndex,
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 1000),
         curve: Curves.easeInOutCubic,
-        alignment: 0.5,
+        alignment: 0.4,
       );
 
       setState(() {
@@ -250,7 +262,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   Widget _buildSearchAppBar(ThemeData theme) {
     return AppBar(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(color: theme.colorScheme.surface),
+        ),
+      ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
         onPressed: () {
@@ -683,30 +701,33 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                               sender = widget.displayName;
                             }
 
-                            return ListTile(
-                              title: Text(
-                                msg.content,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                '$sender • ${DateFormat.yMd().add_jm().format(msg.createdAt)}',
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
+                            return Material(
+                              color: Colors.transparent,
+                              child: ListTile(
+                                title: Text(
+                                  msg.content,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
+                                subtitle: Text(
+                                  '$sender • ${DateFormat.yMd().add_jm().format(msg.createdAt)}',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                onTap: () {
+                                  // Close search mode
+                                  setState(() {
+                                    _isSearchMode = false;
+                                    _chatSearchController.clear();
+                                    _searchResults.clear();
+                                  });
+
+                                  FocusScope.of(context).unfocus();
+
+                                  _scrollToAndHighlight(msg.id);
+                                },
                               ),
-                              onTap: () {
-                                // Close search mode
-                                setState(() {
-                                  _isSearchMode = false;
-                                  _chatSearchController.clear();
-                                  _searchResults.clear();
-                                });
-
-                                FocusScope.of(context).unfocus();
-
-                                _scrollToAndHighlight(msg.id);
-                              },
                             );
                           },
                         ),
@@ -728,8 +749,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     duration: const Duration(milliseconds: 200),
                     child: FloatingActionButton(
                       mini: true,
-                      backgroundColor: theme.colorScheme.surface,
-                      foregroundColor: theme.colorScheme.primary,
+                      backgroundColor: theme.colorScheme.primaryContainer,
+                      foregroundColor: theme.colorScheme.onPrimaryContainer,
                       elevation: 4,
                       onPressed: () => _scrollToBottom(animated: true),
                       child: const Icon(Icons.keyboard_arrow_down),
@@ -751,69 +772,80 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         duration: const Duration(milliseconds: 250),
                         opacity: _replyingToMessage != null ? 1.0 : 0.0,
                         child: _replyingToMessage != null
-                            ? Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.surface,
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: theme.colorScheme.primary,
-                                      width: 4,
+                            ? ClipRect(
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 15,
+                                    sigmaY: 15,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.surface,
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: theme.colorScheme.primary,
+                                          width: 4,
+                                        ),
+                                        top: BorderSide(
+                                          color: theme.colorScheme.surface
+                                              .withValues(alpha: 0.8),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: theme.shadowColor.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, -4),
+                                        ),
+                                      ],
                                     ),
-                                    top: BorderSide(
-                                      color: theme.dividerColor,
-                                      width: 1,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "Replying to message",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                _replyingToMessage.content,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurface,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.close,
+                                            size: 20,
+                                            color: theme.iconTheme.color,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => _replyingToMessage = null,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: theme.shadowColor.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, -2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Replying to message",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: theme.colorScheme.primary,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            _replyingToMessage.content,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color:
-                                                  theme.colorScheme.onSurface,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.close,
-                                        size: 20,
-                                        color: theme.iconTheme.color,
-                                      ),
-                                      onPressed: () => setState(
-                                        () => _replyingToMessage = null,
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               )
                             : const SizedBox(width: double.infinity, height: 0),
