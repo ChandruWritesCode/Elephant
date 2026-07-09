@@ -255,9 +255,9 @@ class _LoginPageState extends State<LoginPage>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.security_rounded,
-                        color: Theme.of(context).colorScheme.primary,
+                      const Icon(
+                        Icons.chat_bubble_rounded,
+                        color: Color(0xFF0052CC),
                         size: 28,
                       ),
                       const SizedBox(width: 8),
@@ -390,7 +390,7 @@ class _LoginPageState extends State<LoginPage>
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: "elephant_user",
+                      hintText: "username",
                       hintStyle: const TextStyle(color: Colors.black38),
                       filled: true,
                       fillColor: Theme.of(

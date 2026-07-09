@@ -102,27 +102,6 @@ go run main.go
  
 Make sure PostgreSQL is running and reachable using the values in your `.env` file (`POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`).
  
-### Running database migrations
- 
-```bash
-cd server
-psql "postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB" \
-for migration in /app/migrations/*_up.sql; do
-    filename=$(basename "$migration")
-    already_applied=$(psql "${DB_URL}" -tAc \
-        "SELECT COUNT(*) FROM schema_migrations WHERE filename = '${filename}'")
-    if [ "$already_applied" = "0" ]; then
-        echo "Applying ${filename}..."
-        psql "${DB_URL}" -f "$migration"
-        psql "${DB_URL}" -c \
-            "INSERT INTO schema_migrations (filename) VALUES ('${filename}')"
-        echo "${filename} applied."
-    else
-        echo "${filename} already applied, skipping."
-    fi
-done
-```
- 
 ### Running the mobile app
  
 ```bash
@@ -146,6 +125,13 @@ flutter run
 | `ARGON_MEMORY` | Argon2id memory cost (KB) | `65536` |
 | `ARGON_ITERATIONS` | Argon2id iteration count | `3` |
 | `ARGON_PARALLELISM` | Argon2id parallelism degree | `2` |
+|`GOOGLE_CLIENT_ID`| Google OAuth client ID| — |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secrett | — |
+| `GOOGLE_REDIRECT_URL` | Google OAuth redirect callback URL | `http://HOST:PORT/api/auth/google/callback` |
+| `GITHUB_CLIENT_ID` | GitHub OAuth client ID | — |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret | — |
+| `GITHUB_REDIRECT_URL` | GitHub OAuth redirect callback URL | `http://HOST:PORT/api/auth/github/callback` |
+
  
 See `.env.example` for a starting template.
 
