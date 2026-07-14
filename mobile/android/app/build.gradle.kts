@@ -24,9 +24,13 @@ android {
 
     buildTypes {
         getByName("release") {
+            // Using debug signing for release config as requested in your original setup
             signingConfig = signingConfigs.getByName("debug")
+            
+            // Critical for tree-shaking and stripping out unneeded classes
             isMinifyEnabled = true
             isShrinkResources = true
+            
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
