@@ -257,13 +257,9 @@ class _LoginPageState extends State<LoginPage>
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Stack(
         children: [
-          // ==========================================
-          // 1. LIVELY LIQUID BACKGROUND
-          // ==========================================
           Positioned.fill(
             child: Stack(
               children: [
-                // Top Left Orb (Primary)
                 Positioned(
                   top: -150,
                   left: -150,
@@ -273,8 +269,11 @@ class _LoginPageState extends State<LoginPage>
                             height: 500,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: colorScheme.primary.withValues(
-                                alpha: 0.45,
+                              gradient: RadialGradient(
+                                colors: [
+                                  colorScheme.primary.withValues(alpha: 0.45),
+                                  colorScheme.primary.withValues(alpha: 0.0),
+                                ],
                               ),
                             ),
                           )
@@ -285,7 +284,7 @@ class _LoginPageState extends State<LoginPage>
                           .move(
                             duration: 6.seconds,
                             curve: Curves.easeInOutSine,
-                            end: const Offset(300, 250), // Massive movement
+                            end: const Offset(300, 250),
                           )
                           .scale(
                             duration: 4.seconds,
@@ -294,7 +293,6 @@ class _LoginPageState extends State<LoginPage>
                           ),
                 ),
 
-                // Bottom Right Orb (Tertiary)
                 Positioned(
                   bottom: -200,
                   right: -100,
@@ -304,8 +302,11 @@ class _LoginPageState extends State<LoginPage>
                             height: 600,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: colorScheme.tertiary.withValues(
-                                alpha: 0.35,
+                              gradient: RadialGradient(
+                                colors: [
+                                  colorScheme.tertiary.withValues(alpha: 0.35),
+                                  colorScheme.tertiary.withValues(alpha: 0.0),
+                                ],
                               ),
                             ),
                           )
@@ -316,10 +317,7 @@ class _LoginPageState extends State<LoginPage>
                           .move(
                             duration: 8.seconds,
                             curve: Curves.easeInOutSine,
-                            end: const Offset(
-                              -400,
-                              -300,
-                            ), // Swirls deep into the screen
+                            end: const Offset(-400, -300),
                           )
                           .scale(
                             duration: 6.seconds,
@@ -328,7 +326,6 @@ class _LoginPageState extends State<LoginPage>
                           ),
                 ),
 
-                // Center Roaming Orb (Secondary)
                 Positioned(
                   top: MediaQuery.of(context).size.height * 0.2,
                   left: MediaQuery.of(context).size.width * 0.1,
@@ -338,8 +335,11 @@ class _LoginPageState extends State<LoginPage>
                             height: 400,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: colorScheme.secondary.withValues(
-                                alpha: 0.30,
+                              gradient: RadialGradient(
+                                colors: [
+                                  colorScheme.secondary.withValues(alpha: 0.30),
+                                  colorScheme.secondary.withValues(alpha: 0.0),
+                                ],
                               ),
                             ),
                           )
@@ -350,9 +350,7 @@ class _LoginPageState extends State<LoginPage>
                           .moveX(
                             duration: 7.seconds,
                             curve: Curves.easeInOutSine,
-                            end:
-                                MediaQuery.of(context).size.width *
-                                0.5, // Roams across the width
+                            end: MediaQuery.of(context).size.width * 0.5,
                           )
                           .moveY(
                             duration: 9.seconds,
@@ -366,665 +364,670 @@ class _LoginPageState extends State<LoginPage>
                           ),
                 ),
 
-                // The Heavy Blur Layer
-                Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: 120,
-                      sigmaY: 120,
-                    ), // Increased blur for smooth blending
-                    child: const SizedBox(),
-                  ),
-                ),
               ],
             ),
           ),
 
           Positioned.fill(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 40,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadiusGeometry.circular(24),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            theme.colorScheme.surface.withValues(alpha: 0.25),
-                            theme.colorScheme.surface.withValues(alpha: 0.05),
+            child: RepaintBoundary(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 40,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadiusGeometry.circular(24),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              theme.colorScheme.surface.withValues(alpha: 0.25),
+                              theme.colorScheme.surface.withValues(alpha: 0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.20,
+                            ),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.shadow.withValues(
+                                alpha: 0.15,
+                              ),
+                              blurRadius: 40,
+                              spreadRadius: -5,
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.20,
-                          ),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.colorScheme.shadow.withValues(
-                              alpha: 0.15,
-                            ),
-                            blurRadius: 40,
-                            spreadRadius: -5,
-                          ),
-                        ],
-                      ),
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      padding: const EdgeInsets.all(32),
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        padding: const EdgeInsets.all(32),
 
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.chat_bubble_rounded,
+                                        color: Color(0xFF0052CC),
+                                        size: 28,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Elephant',
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                  .animate(
+                                    onPlay: (controller) =>
+                                        controller.repeat(period: 4.seconds),
+                                  )
+                                  .shimmer(
+                                    duration: 1.5.seconds,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
+                                  ),
+                              const SizedBox(height: 24),
+
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 400),
+                                switchInCurve: Curves.easeOutCirc,
+                                switchOutCurve: Curves.easeInCirc,
+                                transitionBuilder:
+                                    (
+                                      Widget child,
+                                      Animation<double> animation,
+                                    ) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0.0, 0.2),
+                                            end: Offset.zero,
+                                          ).animate(animation),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                child: Column(
+                                  key: ValueKey<int>(_tabController.index),
                                   children: [
-                                    const Icon(
-                                      Icons.chat_bubble_rounded,
-                                      color: Color(0xFF0052CC),
-                                      size: 28,
-                                    ),
-                                    const SizedBox(width: 8),
                                     Text(
-                                      'Elephant',
+                                      _tabController.index == 0
+                                          ? 'Welcome Back'
+                                          : 'Create Account',
+                                      textAlign: TextAlign.center,
                                       style: TextStyle(
-                                        fontSize: 22,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
                                         color: Theme.of(
                                           context,
-                                        ).colorScheme.primary,
-                                        letterSpacing: 0.5,
+                                        ).colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _tabController.index == 0
+                                          ? 'Access your secure workspace'
+                                          : 'Join the peer mesh platform',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],
-                                )
-                                .animate(
-                                  onPlay: (controller) =>
-                                      controller.repeat(period: 4.seconds),
-                                )
-                                .shimmer(
-                                  duration: 1.5.seconds,
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+
+                              Container(
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surface.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(26),
+                                  border: Border.all(
+                                    color: theme.colorScheme.outlineVariant
+                                        .withValues(alpha: 0.3),
                                   ),
                                 ),
-                            const SizedBox(height: 24),
-
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 400),
-                              switchInCurve: Curves.easeOutCirc,
-                              switchOutCurve: Curves.easeInCirc,
-                              transitionBuilder:
-                                  (Widget child, Animation<double> animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: SlideTransition(
-                                        position: Tween<Offset>(
-                                          begin: const Offset(0.0, 0.2),
-                                          end: Offset.zero,
-                                        ).animate(animation),
-                                        child: child,
+                                child: Stack(
+                                  children: [
+                                    AnimatedAlign(
+                                      duration: const Duration(
+                                        milliseconds: 350,
                                       ),
-                                    );
-                                  },
-                              child: Column(
-                                key: ValueKey<int>(_tabController.index),
-                                children: [
-                                  Text(
-                                    _tabController.index == 0
-                                        ? 'Welcome Back'
-                                        : 'Create Account',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
+                                      curve: Curves.fastOutSlowIn,
+                                      alignment: _tabController.index == 0
+                                          ? Alignment.centerLeft
+                                          : Alignment.centerRight,
+                                      child: FractionallySizedBox(
+                                        widthFactor: 0.5,
+                                        child: Container(
+                                          margin: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              22,
+                                            ),
+                                            color: theme.colorScheme.primary
+                                                .withValues(alpha: 0.2),
+                                            border: Border.all(
+                                              color: theme.colorScheme.primary
+                                                  .withValues(alpha: 0.5),
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: theme.colorScheme.primary
+                                                    .withValues(alpha: 0.4),
+                                                blurRadius: 12,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => setState(
+                                              () => _tabController.index = 0,
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                'Sign In',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      _tabController.index == 0
+                                                      ? Theme.of(
+                                                          context,
+                                                        ).colorScheme.primary
+                                                      : theme
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => setState(
+                                              () => _tabController.index = 1,
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                'Register',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      _tabController.index == 1
+                                                      ? Theme.of(
+                                                          context,
+                                                        ).colorScheme.primary
+                                                      : theme
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+
+                              if (authState.errorMessage != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.errorContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
                                       color: Theme.of(
                                         context,
-                                      ).colorScheme.onSurface,
+                                      ).colorScheme.error,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _tabController.index == 0
-                                        ? 'Access your secure workspace'
-                                        : 'Join the peer mesh platform',
-                                    textAlign: TextAlign.center,
+                                  child: Text(
+                                    authState.errorMessage!,
                                     style: TextStyle(
-                                      fontSize: 14,
                                       color: Theme.of(
                                         context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      ).colorScheme.onErrorContainer,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                              ],
+                              Text(
+                                "Username",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: _usernameController,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontSize: 14,
+                                ),
+                                decoration: InputDecoration(
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                      color: colorScheme.primary,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  hintText: "username",
+                                  hintStyle: TextStyle(color: theme.hintColor),
+                                  filled: true,
+                                  fillColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator: (val) =>
+                                    (val == null || val.trim().isEmpty)
+                                    ? 'Required field'
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 500),
+                                curve: Curves.fastLinearToSlowEaseIn,
+                                child: _tabController.index == 1
+                                    ? Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Text(
+                                                "Display Name",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              TextFormField(
+                                                controller:
+                                                    _displayNameController,
+                                                style: TextStyle(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                  fontSize: 14,
+                                                ),
+                                                decoration: InputDecoration(
+                                                  focusedBorder:
+                                                      OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        borderSide: BorderSide(
+                                                          color: colorScheme
+                                                              .primary,
+                                                          width: 1.5,
+                                                        ),
+                                                      ),
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 14,
+                                                        vertical: 12,
+                                                      ),
+                                                  hintText: "John Doe",
+                                                  hintStyle: TextStyle(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).hintColor,
+                                                  ),
+                                                  filled: true,
+                                                  fillColor: theme
+                                                      .colorScheme
+                                                      .surfaceContainerHighest,
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    borderSide: BorderSide.none,
+                                                  ),
+                                                ),
+                                                validator: (val) =>
+                                                    (val == null ||
+                                                        val.trim().isEmpty)
+                                                    ? 'Required field'
+                                                    : null,
+                                              ),
+                                              const SizedBox(height: 16),
+                                            ],
+                                          )
+                                          .animate()
+                                          .fade(duration: 400.ms, delay: 150.ms)
+                                          .slideX(begin: -0.05)
+                                    : const SizedBox.shrink(),
+                              ),
+
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Password",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                  ),
+                                  if (_tabController.index == 0)
+                                    TextButton(
+                                      onPressed: () {},
+                                      style: TextButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        minimumSize: Size.zero,
+                                      ),
+                                      child: const Text(
+                                        "Forgot Password?",
+                                        style: TextStyle(
+                                          color: Color(0xFF0052CC),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontSize: 14,
+                                ),
+                                decoration: InputDecoration(
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                      color: colorScheme.primary,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  hintText: "••••••••",
+                                  hintStyle: TextStyle(color: theme.hintColor),
+                                  filled: true,
+                                  fillColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                validator: (val) =>
+                                    (val == null || val.trim().length < 6)
+                                    ? 'Must be at least 6 characters'
+                                    : null,
+                              ),
+                              const SizedBox(height: 24),
+
+                              ElevatedButton(
+                                    onPressed: authState.isLoading
+                                        ? null
+                                        : _submit,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      foregroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: authState.isLoading
+                                        ? SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimary,
+                                              strokeWidth: 2.5,
+                                            ),
+                                          )
+                                        : AnimatedSwitcher(
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            transitionBuilder:
+                                                (child, animation) =>
+                                                    FadeTransition(
+                                                      opacity: animation,
+                                                      child: ScaleTransition(
+                                                        scale: animation,
+                                                        child: child,
+                                                      ),
+                                                    ),
+                                            child: Text(
+                                              _tabController.index == 0
+                                                  ? 'Sign In'
+                                                  : 'Sign Up',
+                                              key: ValueKey<int>(
+                                                _tabController.index,
+                                              ),
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                  )
+                                  .animate(
+                                    onPlay: (controller) =>
+                                        controller.repeat(reverse: true),
+                                  )
+                                  .scale(
+                                    begin: const Offset(1, 1),
+                                    end: const Offset(1.02, 1.02),
+                                    duration: 2.seconds,
+                                    curve: Curves.easeInOutSine,
+                                  ),
+                              const SizedBox(height: 24),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Divider(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outlineVariant,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      "or sign in with",
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Divider(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outlineVariant,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 28),
+                              const SizedBox(height: 20),
 
-                            Container(
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.surface.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(26),
-                                border: Border.all(
-                                  color: theme.colorScheme.outlineVariant
-                                      .withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Stack(
+                              Row(
                                 children: [
-                                  AnimatedAlign(
-                                    duration: const Duration(milliseconds: 350),
-                                    curve: Curves.fastOutSlowIn,
-                                    alignment: _tabController.index == 0
-                                        ? Alignment.centerLeft
-                                        : Alignment.centerRight,
-                                    child: FractionallySizedBox(
-                                      widthFactor: 0.5,
-                                      child: Container(
-                                        margin: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(
-                                            22,
-                                          ),
-                                          color: theme.colorScheme.primary
-                                              .withValues(alpha: 0.2),
-                                          border: Border.all(
-                                            color: theme.colorScheme.primary
-                                                .withValues(alpha: 0.5),
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: theme.colorScheme.primary
-                                                  .withValues(alpha: 0.4),
-                                              blurRadius: 12,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                  _buildSocialButton(
+                                    label: "Google",
+                                    icon: Icons.g_mobiledata,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _buildSocialButton(
+                                    label: "GitHub",
+                                    icon: Icons.code,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 28),
+
+                              Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.tertiaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.tertiary,
                                     ),
                                   ),
-                                  Row(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Expanded(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () => setState(
-                                            () => _tabController.index = 0,
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              'Sign In',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: _tabController.index == 0
-                                                    ? Theme.of(
-                                                        context,
-                                                      ).colorScheme.primary
-                                                    : theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onTertiaryContainer,
+                                        size: 14,
                                       ),
-                                      Expanded(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () => setState(
-                                            () => _tabController.index = 1,
-                                          ),
-                                          child: Center(
-                                            child: Text(
-                                              'Register',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: _tabController.index == 1
-                                                    ? Theme.of(
-                                                        context,
-                                                      ).colorScheme.primary
-                                                    : theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "End-to-end encrypted session",
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onTertiaryContainer,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-
-                            if (authState.errorMessage != null) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.errorContainer,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                                child: Text(
-                                  authState.errorMessage!,
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onErrorContainer,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
                                 ),
                               ),
                               const SizedBox(height: 20),
-                            ],
-                            Text(
-                              "Username",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _usernameController,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: colorScheme.primary,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
-                                ),
-                                hintText: "username",
-                                hintStyle: TextStyle(color: theme.hintColor),
-                                filled: true,
-                                fillColor: Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none,
-                                ),
-                              ),
-                              validator: (val) =>
-                                  (val == null || val.trim().isEmpty)
-                                  ? 'Required field'
-                                  : null,
-                            ),
 
-                            const SizedBox(height: 16),
-
-                            AnimatedSize(
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.fastLinearToSlowEaseIn,
-                              child: _tabController.index == 1
-                                  ? Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            Text(
-                                              "Display Name",
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            TextFormField(
-                                              controller:
-                                                  _displayNameController,
-                                              style: TextStyle(
-                                                color: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
-                                                fontSize: 14,
-                                              ),
-                                              decoration: InputDecoration(
-                                                focusedBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            colorScheme.primary,
-                                                        width: 1.5,
-                                                      ),
-                                                    ),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 14,
-                                                      vertical: 12,
-                                                    ),
-                                                hintText: "John Doe",
-                                                hintStyle: TextStyle(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).hintColor,
-                                                ),
-                                                filled: true,
-                                                fillColor: theme
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                                border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  borderSide: BorderSide.none,
-                                                ),
-                                              ),
-                                              validator: (val) =>
-                                                  (val == null ||
-                                                      val.trim().isEmpty)
-                                                  ? 'Required field'
-                                                  : null,
-                                            ),
-                                            const SizedBox(height: 16),
-                                          ],
-                                        )
-                                        .animate()
-                                        .fade(duration: 400.ms, delay: 150.ms)
-                                        .slideX(begin: -0.05)
-                                  : const SizedBox.shrink(),
-                            ),
-
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Password",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: _openServerConfigDialog,
+                                  icon: Icon(
+                                    Icons.dns_outlined,
+                                    size: 14,
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.primary,
                                   ),
-                                ),
-                                if (_tabController.index == 0)
-                                  TextButton(
-                                    onPressed: () {},
-                                    style: TextButton.styleFrom(
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: Size.zero,
-                                    ),
-                                    child: const Text(
-                                      "Forgot Password?",
-                                      style: TextStyle(
-                                        color: Color(0xFF0052CC),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: true,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontSize: 14,
-                              ),
-                              decoration: InputDecoration(
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: colorScheme.primary,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
-                                ),
-                                hintText: "••••••••",
-                                hintStyle: TextStyle(color: theme.hintColor),
-                                filled: true,
-                                fillColor: Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide.none,
-                                ),
-                              ),
-                              validator: (val) =>
-                                  (val == null || val.trim().length < 6)
-                                  ? 'Must be at least 6 characters'
-                                  : null,
-                            ),
-                            const SizedBox(height: 24),
-
-                            ElevatedButton(
-                                  onPressed: authState.isLoading
-                                      ? null
-                                      : _submit,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    foregroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimary,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: authState.isLoading
-                                      ? SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary,
-                                            strokeWidth: 2.5,
-                                          ),
-                                        )
-                                      : AnimatedSwitcher(
-                                          duration: const Duration(
-                                            milliseconds: 300,
-                                          ),
-                                          transitionBuilder:
-                                              (child, animation) =>
-                                                  FadeTransition(
-                                                    opacity: animation,
-                                                    child: ScaleTransition(
-                                                      scale: animation,
-                                                      child: child,
-                                                    ),
-                                                  ),
-                                          child: Text(
-                                            _tabController.index == 0
-                                                ? 'Sign In'
-                                                : 'Sign Up',
-                                            key: ValueKey<int>(
-                                              _tabController.index,
-                                            ),
-                                            style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                )
-                                .animate(
-                                  onPlay: (controller) =>
-                                      controller.repeat(reverse: true),
-                                )
-                                .scale(
-                                  begin: const Offset(1, 1),
-                                  end: const Offset(1.02, 1.02),
-                                  duration: 2.seconds,
-                                  curve: Curves.easeInOutSine,
-                                ),
-                            const SizedBox(height: 24),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Divider(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.outlineVariant,
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  child: Text(
-                                    "or sign in with",
+                                  label: Text(
+                                    "Connected to: ${Env.host}:${Env.port} ⚙️",
                                     style: TextStyle(
                                       color: Theme.of(
                                         context,
                                       ).colorScheme.onSurfaceVariant,
                                       fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Divider(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.outlineVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-
-                            Row(
-                              children: [
-                                _buildSocialButton(
-                                  label: "Google",
-                                  icon: Icons.g_mobiledata,
-                                ),
-                                const SizedBox(width: 12),
-                                _buildSocialButton(
-                                  label: "GitHub",
-                                  icon: Icons.code,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 28),
-
-                            Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.tertiaryContainer,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.tertiary,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onTertiaryContainer,
-                                      size: 14,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "End-to-end encrypted session",
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onTertiaryContainer,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-
-                            Center(
-                              child: TextButton.icon(
-                                onPressed: _openServerConfigDialog,
-                                icon: Icon(
-                                  Icons.dns_outlined,
-                                  size: 14,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                label: Text(
-                                  "Connected to: ${Env.host}:${Env.port} ⚙️",
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
-                            ),
-                          ].animate(interval: 100.ms).fade(duration: 400.ms).slideY(begin: 0.1, curve: Curves.easeOutQuad),
+                            ].animate(interval: 100.ms).fade(duration: 400.ms).slideY(begin: 0.1, curve: Curves.easeOutQuad),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ).animate().fade(duration: 600.ms).slideY(begin: 0.1, curve: Curves.easeOutExpo),
+                  ).animate().fade(duration: 600.ms).slideY(begin: 0.1, curve: Curves.easeOutExpo),
+                ),
               ),
             ),
           ),
@@ -1032,56 +1035,57 @@ class _LoginPageState extends State<LoginPage>
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
             right: 24,
-            child:
-                ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface.withValues(
-                              alpha: 0.15,
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.20,
+            child: RepaintBoundary(
+              child:
+                  ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface.withValues(
+                                alpha: 0.15,
                               ),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: theme.colorScheme.shadow.withValues(
-                                  alpha: 0.1,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.20,
                                 ),
-                                blurRadius: 20,
+                                width: 1.5,
                               ),
-                            ],
-                          ),
-                          child: IconButton(
-                            padding: const EdgeInsets.all(12),
-                            icon: Icon(
-                              Icons.color_lens_outlined,
-                              color: theme.colorScheme.primary,
-                              size: 22,
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AppearanceSettings(),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.shadow.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  blurRadius: 20,
                                 ),
-                              );
-                            },
-                            tooltip: 'Appearance Settings',
+                              ],
+                            ),
+                            child: IconButton(
+                              padding: const EdgeInsets.all(12),
+                              icon: Icon(
+                                Icons.color_lens_outlined,
+                                color: theme.colorScheme.primary,
+                                size: 22,
+                              ),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AppearanceSettings(),
+                                  ),
+                                );
+                              },
+                              tooltip: 'Appearance Settings',
+                            ),
                           ),
                         ),
-                      ),
-                    )
-                    // Adds a sleek pop-in animation slightly delayed after the main card
-                    .animate()
-                    .fade(delay: 400.ms, duration: 500.ms)
-                    .scale(curve: Curves.easeOutBack),
+                      )
+                      .animate()
+                      .fade(delay: 400.ms, duration: 500.ms)
+                      .scale(curve: Curves.easeOutBack),
+            ),
           ),
         ],
       ),
