@@ -59,7 +59,12 @@ launcher_name:
 
 flutter_launcher_icons:
   android: true
+  ios: true
   image_path: "assets/launcher/elephant.png"
+
+  adaptive_icon_background: "#1B1F26"
+
+  adaptive_icon_foreground: "assets/launcher/elephant.png"
 
 dev_dependencies:
   flutter_test:
