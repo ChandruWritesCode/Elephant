@@ -3,7 +3,7 @@ import 'package:mobile/themes/app_themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
-  ThemeType _currentTheme = ThemeType.onyx; 
+  ThemeType _currentTheme = ThemeType.frost;
   bool _isInitialized = false;
 
   ThemeType get currentTheme => _currentTheme;
@@ -23,7 +23,7 @@ class ThemeProvider extends ChangeNotifier {
         savedThemeIndex < ThemeType.values.length) {
       _currentTheme = ThemeType.values[savedThemeIndex];
     } else {
-      _currentTheme = ThemeType.onyx;
+      _currentTheme = ThemeType.frost;
     }
 
     _isInitialized = true;
