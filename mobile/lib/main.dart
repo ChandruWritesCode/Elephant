@@ -7,7 +7,7 @@ import 'core/constants.dart';
 import 'controllers/auth.dart';
 import 'controllers/chat.dart';
 import 'services/auth.dart';
-import 'pages/login.dart';
+import 'pages/login_page.dart';
 import 'pages/home_page.dart';
 
 void main() async {
