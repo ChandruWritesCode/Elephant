@@ -12,14 +12,13 @@ import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Env.init();
-  await AuthService().initTokens();
+ await Future.wait([Env.init(), AuthService().initTokens()]);
 
   final themeProvider = ThemeProvider();
 
-  while (!themeProvider.isInitialized) {
-    await Future.delayed(const Duration(milliseconds: 10));
-  }
+  // while (!themeProvider.isInitialized) {
+  //   await Future.delayed(const Duration(milliseconds: 10));
+  // }
 
   runApp(
     MultiProvider(
@@ -70,7 +69,9 @@ class _SessionGatewayState extends State<SessionGateway> {
     final auth = context.read<AuthState>();
     final token = await auth.checkAutoLogin();
 
-    if (token != null && mounted) {
+    if (!mounted) return;
+
+    if (token != null) {
       _lastInitializedToken = token;
       context.read<ChatController>().initSession();
     }
@@ -90,6 +91,7 @@ class _SessionGatewayState extends State<SessionGateway> {
         body: Center(
           child: CircularProgressIndicator(
             color: Theme.of(context).colorScheme.primary,
+            strokeWidth: 3,
           ),
         ),
       );

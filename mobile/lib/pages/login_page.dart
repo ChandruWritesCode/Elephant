@@ -363,7 +363,6 @@ class _LoginPageState extends State<LoginPage>
                             end: const Offset(1.6, 1.6),
                           ),
                 ),
-
               ],
             ),
           ),
@@ -379,7 +378,7 @@ class _LoginPageState extends State<LoginPage>
                   child: ClipRRect(
                     borderRadius: BorderRadiusGeometry.circular(24),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -417,89 +416,59 @@ class _LoginPageState extends State<LoginPage>
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.chat_bubble_rounded,
-                                        color: Color(0xFF0052CC),
-                                        size: 28,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Elephant',
-                                        style: TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
-                                          letterSpacing: 0.5,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                  .animate(
-                                    onPlay: (controller) =>
-                                        controller.repeat(period: 4.seconds),
-                                  )
-                                  .shimmer(
-                                    duration: 1.5.seconds,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.5),
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.chat_bubble_rounded,
+                                    color: Color(0xFF0052CC),
+                                    size: 28,
                                   ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Elephant',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 24),
 
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 400),
-                                switchInCurve: Curves.easeOutCirc,
-                                switchOutCurve: Curves.easeInCirc,
-                                transitionBuilder:
-                                    (
-                                      Widget child,
-                                      Animation<double> animation,
-                                    ) {
-                                      return FadeTransition(
-                                        opacity: animation,
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0.0, 0.2),
-                                            end: Offset.zero,
-                                          ).animate(animation),
-                                          child: child,
-                                        ),
-                                      );
-                                    },
-                                child: Column(
-                                  key: ValueKey<int>(_tabController.index),
-                                  children: [
-                                    Text(
-                                      _tabController.index == 0
-                                          ? 'Welcome Back'
-                                          : 'Create Account',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurface,
-                                      ),
+                              Column(
+                                key: ValueKey<int>(_tabController.index),
+                                children: [
+                                  Text(
+                                    _tabController.index == 0
+                                        ? 'Welcome Back'
+                                        : 'Create Account',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      _tabController.index == 0
-                                          ? 'Access your secure workspace'
-                                          : 'Join the peer mesh platform',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _tabController.index == 0
+                                        ? 'Access your secure workspace'
+                                        : 'Join the peer mesh platform',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 28),
 
@@ -648,6 +617,7 @@ class _LoginPageState extends State<LoginPage>
                               ),
                               const SizedBox(height: 6),
                               TextFormField(
+                                textInputAction: TextInputAction.next,
                                 controller: _usernameController,
                                 style: TextStyle(
                                   color: Theme.of(
@@ -706,6 +676,8 @@ class _LoginPageState extends State<LoginPage>
                                               ),
                                               const SizedBox(height: 6),
                                               TextFormField(
+                                                textInputAction:
+                                                    TextInputAction.next,
                                                 controller:
                                                     _displayNameController,
                                                 style: TextStyle(
@@ -800,6 +772,8 @@ class _LoginPageState extends State<LoginPage>
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: _passwordController,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => _submit(),
                                 obscureText: true,
                                 style: TextStyle(
                                   color: Theme.of(
@@ -838,72 +812,46 @@ class _LoginPageState extends State<LoginPage>
                               const SizedBox(height: 24),
 
                               ElevatedButton(
-                                    onPressed: authState.isLoading
-                                        ? null
-                                        : _submit,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      foregroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.onPrimary,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 14,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    child: authState.isLoading
-                                        ? SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onPrimary,
-                                              strokeWidth: 2.5,
-                                            ),
-                                          )
-                                        : AnimatedSwitcher(
-                                            duration: const Duration(
-                                              milliseconds: 300,
-                                            ),
-                                            transitionBuilder:
-                                                (child, animation) =>
-                                                    FadeTransition(
-                                                      opacity: animation,
-                                                      child: ScaleTransition(
-                                                        scale: animation,
-                                                        child: child,
-                                                      ),
-                                                    ),
-                                            child: Text(
-                                              _tabController.index == 0
-                                                  ? 'Sign In'
-                                                  : 'Sign Up',
-                                              key: ValueKey<int>(
-                                                _tabController.index,
-                                              ),
-                                              style: const TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                  )
-                                  .animate(
-                                    onPlay: (controller) =>
-                                        controller.repeat(reverse: true),
-                                  )
-                                  .scale(
-                                    begin: const Offset(1, 1),
-                                    end: const Offset(1.02, 1.02),
-                                    duration: 2.seconds,
-                                    curve: Curves.easeInOutSine,
+                                onPressed: authState.isLoading ? null : _submit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
                                   ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: authState.isLoading
+                                    ? SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
+                                          strokeWidth: 2.5,
+                                        ),
+                                      )
+                                    : Text(
+                                        _tabController.index == 0
+                                            ? 'Sign In'
+                                            : 'Sign Up',
+                                        key: ValueKey<int>(
+                                          _tabController.index,
+                                        ),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
                               const SizedBox(height: 24),
 
                               Row(
