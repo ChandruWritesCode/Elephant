@@ -46,9 +46,10 @@ jobs:
 
       - name: Rename APKs with version tag
         run: |
-          mv mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk mobile/build/app/outputs/flutter-apk/elephant-${{ github.ref_name }}-armeabi-v7a.apk
-          mv mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk mobile/build/app/outputs/flutter-apk/elephant-${{ github.ref_name }}-arm64-v8a.apk
-          mv mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk mobile/build/app/outputs/flutter-apk/elephant-${{ github.ref_name }}-x86_64.apk
+          VERSION_CODE=$(grep '^version:' mobile/pubsec.yaml | cut -d'+' -f2)
+          mv mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk mobile/build/app/outputs/flutter-apk/elephant-${{ github.ref_name }}-${ VERSION_CODE }1.apk
+          mv mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk mobile/build/app/outputs/flutter-apk/elephant-${{ github.ref_name }}-${ VERSION_CODE }2.apk
+          mv mobile/build/app/outputs/flutter-apk/app-x86_64-release.apk mobile/build/app/outputs/flutter-apk/elephant-${{ github.ref_name }}-${ VERSION_CODE }3.apk
 
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
