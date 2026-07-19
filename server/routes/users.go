@@ -11,8 +11,7 @@ func UserRoute(router chi.Router) {
 
 	router.Use(middlewares.AuthGuard)
 
-	router.Get("/me", controllers.HandleGetMe)         // Resolves to /api/users/me
-	router.Get("/{id}", controllers.HandleGetUserByID) // Resolves to /api/users/:id
-
-	router.With(searchLimiter.Limit).Get("/search", controllers.HandleUserSearch) // Resolves to /api/users/search
+	router.Get("/me", controllers.HandleGetMe)
+	router.With(searchLimiter.Limit).Get("/search", controllers.HandleUserSearch)
+	router.Get("/{id}", controllers.HandleGetUserByID)
 }
