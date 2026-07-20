@@ -13,7 +13,7 @@ configurations.all {
     exclude(group = "com.google.android.play", module = "split-install")
 }
 
-configure<com.android.build.api.dsl.ApplicationExtension> {
+android {
     namespace = "in.commandlinecoding.elephant"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
