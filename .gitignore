@@ -36,3 +36,4 @@ mob/windows
 
 # Keep database data folders out of version control
 pgdata/
+mobile/android/.kotlin/sessions/kotlin-compiler-11697587527650162998.salive
