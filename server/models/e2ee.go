@@ -22,3 +22,14 @@ type PrekeyBundle struct {
 	OneTimePrekeyID   *int    `json:"one_time_prekey_id,omitempty"`
 	OneTimePrekeyBody *string `json:"one_time_prekey_body,omitempty"`
 }
+
+type VerifyContactReq struct {
+	VerifiedUserID string `json:"verified_user_id"`
+	IsVerified     bool   `json:"is_verified"`
+}
+
+type VerificationStatusResp struct {
+	UserID         string `json:"user_id"`
+	VerifiedUserID string `json:"verified_user_id"`
+	IsVerified     bool   `json:"is_verified"`
+}

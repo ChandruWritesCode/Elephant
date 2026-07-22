@@ -37,3 +37,29 @@ func (s *E2EEService) CheckKeysExhaustion(ctx context.Context, uid string, devic
 	}
 	return count, count < 10, nil
 }
+
+func (s *E2EEService) SetVerification(ctx context.Context, uid string, req models.VerifyContactReq) error {
+	if req.VerifiedUserID == "" {
+		return errors.New("target verified_user_id is required")
+	}
+	if uid == req.VerifiedUserID {
+		return errors.New("cannot verify own user identity")
+	}
+	return s.repo.SetVerificationStatus(ctx, uid, req.VerifiedUserID, req.IsVerified)
+}
+
+func (s *E2EEService) GetVerification(ctx context.Context, uid, targetUID string) (*models.VerificationStatusResp, error) {
+	if targetUID == "" {
+		return nil, errors.New("target user_id is required")
+	}
+	isVerified, err := s.repo.GetVerificationStatus(ctx, uid, targetUID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.VerificationStatusResp{
+		UserID:         uid,
+		VerifiedUserID: targetUID,
+		IsVerified:     isVerified,
+	}, nil
+}

@@ -22,6 +22,10 @@ func (r *E2EERepository) SaveDeviceKeys(ctx context.Context, uid string, req mod
 	}
 	defer tx.Rollback(ctx)
 
+	var existingKey string
+	checkQuery := `SELECT identity_key FROM user_devices WHERE user_id = $1::uuid AND device_id = $2;`
+	_ = tx.QueryRow(ctx, checkQuery, uid, req.DeviceID).Scan(&existingKey)
+
 	deviceQuery := `
 		INSERT INTO user_devices (user_id, device_id, identity_key, signed_prekey, signed_prekey_signature, updated_at)
 		VALUES ($1::uuid, $2, $3, $4, $5, NOW())
@@ -31,6 +35,18 @@ func (r *E2EERepository) SaveDeviceKeys(ctx context.Context, uid string, req mod
 	_, err = tx.Exec(ctx, deviceQuery, uid, req.DeviceID, req.IdentityKey, req.SignedPrekey, req.Signature)
 	if err != nil {
 		return err
+	}
+
+	if existingKey != req.IdentityKey {
+		invalidateQuery := `
+			UPDATE user_verifications 
+			SET is_verified = FALSE, updated_at = NOW() 
+			WHERE verified_user_id = $1::uuid;
+		`
+		_, err = tx.Exec(ctx, invalidateQuery, uid)
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(req.OneTimePrekeys) > 0 {
@@ -99,4 +115,42 @@ func (r *E2EERepository) GetOTPCount(ctx context.Context, uid, deviceID string) 
 	var count int
 	err := config.DB.QueryRow(ctx, query, uid, deviceID).Scan(&count)
 	return count, err
+}
+
+func (r *E2EERepository) SetVerificationStatus(ctx context.Context, uid, targetUID string, isVerified bool) error {
+	query := `
+		INSERT INTO user_verifications (user_id, verified_user_id, is_verified, updated_at)
+		VALUES ($1::uuid, $2::uuid, $3, NOW())
+		ON CONFLICT (user_id, verified_user_id)
+		DO UPDATE SET is_verified = $3, updated_at = NOW();
+	`
+	_, err := config.DB.Exec(ctx, query, uid, targetUID, isVerified)
+	return err
+}
+
+func (r *E2EERepository) GetVerificationStatus(ctx context.Context, uid, targetUID string) (bool, error) {
+	query := `
+		SELECT is_verified 
+		FROM user_verifications 
+		WHERE user_id = $1::uuid AND verified_user_id = $2::uuid;
+	`
+	var isVerified bool
+	err := config.DB.QueryRow(ctx, query, uid, targetUID).Scan(&isVerified)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return isVerified, nil
+}
+
+func (r *E2EERepository) InvalidateUserVerifications(ctx context.Context, uid string) error {
+	query := `
+		UPDATE user_verifications 
+		SET is_verified = FALSE, updated_at = NOW() 
+		WHERE verified_user_id = $1::uuid;
+	`
+	_, err := config.DB.Exec(ctx, query, uid)
+	return err
 }

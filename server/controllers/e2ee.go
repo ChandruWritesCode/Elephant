@@ -69,3 +69,43 @@ func HandleGetPrekeyBundle(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: bundle})
 }
+
+func HandleSetVerification(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	uid, _ := r.Context().Value(middlewares.UserIDKey).(string)
+
+	var req models.VerifyContactReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Invalid JSON payload structure"})
+		return
+	}
+
+	svc := services.NewE2EEService()
+	if err := svc.SetVerification(r.Context(), uid, req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{
+		Success: true,
+		Data:    map[string]interface{}{"message": "Contact verification status updated"},
+	})
+}
+
+func HandleGetVerificationStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	uid, _ := r.Context().Value(middlewares.UserIDKey).(string)
+	targetUID := chi.URLParam(r, "userId")
+
+	svc := services.NewE2EEService()
+	resp, err := svc.GetVerification(r.Context(), uid, targetUID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: resp})
+}
