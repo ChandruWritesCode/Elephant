@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -146,38 +147,36 @@ func HandleOAuthRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
-	var url string
+	var urlStr string
 	switch provider {
 	case "google":
-		url = config.GoogleConfig.AuthCodeURL(state)
+		urlStr = config.GoogleConfig.AuthCodeURL(state)
 	case "github":
-		url = config.GithubConfig.AuthCodeURL(state)
+		urlStr = config.GithubConfig.AuthCodeURL(state)
 	default:
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Unsupported OAuth provider context"})
 		return
 	}
 
-	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, urlStr, http.StatusTemporaryRedirect)
 }
 
 func HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	provider := chi.URLParam(r, "provider")
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 
 	cookie, err := r.Cookie("oauth_state")
 	if err != nil || cookie.Value != state {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "State token match validation failed"})
+		renderHandoffError(w, "State token match validation failed.")
 		return
 	}
 
 	profile, err := services.ProcessCallback(r.Context(), provider, code)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})
+		renderHandoffError(w, fmt.Sprintf("OAuth processing error: %s", err.Error()))
 		return
 	}
 
@@ -204,8 +203,7 @@ func HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 			u, err = userRepo.CreateOAuthUser(r.Context(), username, profile.Email, profile.Name, provider, profile.ID)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to allocate user credentials"})
+				renderHandoffError(w, "Failed to allocate user account credentials.")
 				return
 			}
 		}
@@ -213,7 +211,7 @@ func HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := services.GenerateTokenPair(u.ID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		renderHandoffError(w, "Token generation failure.")
 		return
 	}
 
@@ -222,13 +220,158 @@ func HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	expiry := time.Now().Add(7 * 24 * time.Hour)
 	_ = tokenRepo.StoreToken(r.Context(), u.ID, hashedRt, expiry)
 
-	_ = json.NewEncoder(w).Encode(models.JSONResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"user":   u,
-			"tokens": tokens,
-		},
-	})
+	customSchemeURL := fmt.Sprintf(
+		"elephant://oauth-callback?access_token=%s&refresh_token=%s",
+		url.QueryEscape(tokens.AccessToken),
+		url.QueryEscape(tokens.RefreshToken),
+	)
+
+	intentURL := fmt.Sprintf(
+		"intent://oauth-callback?access_token=%s&refresh_token=%s#Intent;scheme=elephant;package=in.commandlinecoding.elephant;end;",
+		url.QueryEscape(tokens.AccessToken),
+		url.QueryEscape(tokens.RefreshToken),
+	)
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	htmlPage := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elephant Authentication</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        h2 {
+            margin: 0 0 8px 0;
+            color: #58a6ff;
+            font-size: 20px;
+        }
+        p {
+            margin: 0 0 24px 0;
+            font-size: 14px;
+            color: #8b949e;
+        }
+        .btn {
+            display: block;
+            width: 100%%;
+            background-color: #238636;
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn:hover { background-color: #2ea043; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🐘</div>
+        <h2>Sign In Successful</h2>
+        <p>Redirecting back to the Elephant application...</p>
+        <a id="launch-btn" href="%s" class="btn">Open Elephant App</a>
+    </div>
+    <script>
+        const intentUri = "%s";
+        const customScheme = "%s";
+
+        function triggerRedirect() {
+            window.location.href = intentUri;
+
+            setTimeout(function() {
+                window.location.href = customScheme;
+            }, 400);
+        }
+
+        document.getElementById('launch-btn').addEventListener('click', function(e) {
+            triggerRedirect();
+        });
+
+        window.onload = function() {
+            triggerRedirect();
+        };
+    </script>
+</body>
+</html>`, customSchemeURL, intentURL, customSchemeURL)
+
+	_, _ = w.Write([]byte(htmlPage))
+}
+
+func renderHandoffError(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusUnauthorized)
+
+	htmlError := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Error</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #f85149;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 100%%;
+            text-align: center;
+        }
+        h2 { margin-top: 0; }
+        p { color: #8b949e; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Authentication Failed</h2>
+        <p>%s</p>
+    </div>
+</body>
+</html>`, message)
+
+	_, _ = w.Write([]byte(htmlError))
 }
 
 func cleanAlphanumeric(s string) string {
