@@ -109,3 +109,29 @@ func HandleGetVerificationStatus(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: resp})
 }
+
+func HandleResetKeys(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	uid, _ := r.Context().Value(middlewares.UserIDKey).(string)
+
+	var req models.ResetKeysReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Invalid JSON request payload"})
+		return
+	}
+
+	svc := services.NewE2EEService()
+	if err := svc.ResetKeys(r.Context(), uid, req.Password); err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"message": "All encryption keys wiped successfully. Please re-generate and upload a new prekey bundle.",
+		},
+	})
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/commandlinecoding/elephant/server/config"
 	"github.com/commandlinecoding/elephant/server/models"
 	"github.com/commandlinecoding/elephant/server/repository"
 )
@@ -62,4 +63,27 @@ func (s *E2EEService) GetVerification(ctx context.Context, uid, targetUID string
 		VerifiedUserID: targetUID,
 		IsVerified:     isVerified,
 	}, nil
+}
+
+func (s *E2EEService) ResetKeys(ctx context.Context, uid string, password string) error {
+
+	var passwordHash string
+	query := `SELECT password_hash FROM users WHERE id = $1::uuid;`
+	err := config.DB.QueryRow(ctx, query, uid).Scan(&passwordHash)
+	if err != nil {
+		return errors.New("user account context not found")
+	}
+
+	if passwordHash != "" {
+		if password == "" {
+			return errors.New("password required for re-authentication")
+		}
+
+		match, err := VerifyPassword(password, passwordHash)
+		if err != nil || !match {
+			return errors.New("invalid password re-authentication attempt")
+		}
+	}
+
+	return s.repo.ResetUserKeys(ctx, uid)
 }

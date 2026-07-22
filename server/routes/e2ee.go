@@ -14,4 +14,6 @@ func E2EERoute(router chi.Router) {
 
 	router.Post("/verify", controllers.HandleSetVerification)
 	router.Get("/verify/{userId}", controllers.HandleGetVerificationStatus)
+
+	router.Post("/reset", controllers.HandleResetKeys)
 }
