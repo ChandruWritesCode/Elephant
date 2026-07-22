@@ -11,4 +11,7 @@ func E2EERoute(router chi.Router) {
 
 	router.Post("/keys", controllers.HandleUploadE2EEKeys)
 	router.Get("/bundle/{userId}", controllers.HandleGetPrekeyBundle)
+
+	router.Post("/verify", controllers.HandleSetVerification)
+	router.Get("/verify/{userId}", controllers.HandleGetVerificationStatus)
 }
