@@ -12,13 +12,14 @@ import 'pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
- await Future.wait([Env.init(), AuthService().initTokens()]);
+  await Env.init();
+  await AuthService().initTokens();
 
   final themeProvider = ThemeProvider();
 
-  // while (!themeProvider.isInitialized) {
-  //   await Future.delayed(const Duration(milliseconds: 10));
-  // }
+  while (!themeProvider.isInitialized) {
+    await Future.delayed(const Duration(milliseconds: 10));
+  }
 
   runApp(
     MultiProvider(
@@ -55,23 +56,29 @@ class SessionGateway extends StatefulWidget {
   State<SessionGateway> createState() => _SessionGatewayState();
 }
 
-class _SessionGatewayState extends State<SessionGateway> {
+class _SessionGatewayState extends State<SessionGateway>
+    with WidgetsBindingObserver {
   bool _hasCheckedAutoLogin = false;
   String? _lastInitializedToken;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _performInitialAutoLoginCheck();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void _performInitialAutoLoginCheck() async {
     final auth = context.read<AuthState>();
     final token = await auth.checkAutoLogin();
 
-    if (!mounted) return;
-
-    if (token != null) {
+    if (token != null && mounted) {
       _lastInitializedToken = token;
       context.read<ChatController>().initSession();
     }
@@ -91,7 +98,6 @@ class _SessionGatewayState extends State<SessionGateway> {
         body: Center(
           child: CircularProgressIndicator(
             color: Theme.of(context).colorScheme.primary,
-            strokeWidth: 3,
           ),
         ),
       );

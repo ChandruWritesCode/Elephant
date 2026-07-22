@@ -55,8 +55,8 @@ class _LoginPageState extends State<LoginPage>
           title: Row(
             children: [
               Icon(Icons.dns, color: colorScheme.primary),
-              SizedBox(width: 8),
-              Text(
+              const SizedBox(width: 8),
+              const Text(
                 "Server Settings",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -224,11 +224,15 @@ class _LoginPageState extends State<LoginPage>
     }
   }
 
-  Widget _buildSocialButton({required String label, required IconData icon}) {
+  Widget _buildSocialButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Expanded(
       child: OutlinedButton.icon(
-        onPressed: () {},
+        onPressed: onPressed,
         icon: Icon(icon, color: colorScheme.onSurface, size: 18),
         label: Text(
           label,
@@ -292,7 +296,6 @@ class _LoginPageState extends State<LoginPage>
                             end: const Offset(1.4, 1.4),
                           ),
                 ),
-
                 Positioned(
                   bottom: -200,
                   right: -100,
@@ -325,7 +328,6 @@ class _LoginPageState extends State<LoginPage>
                             end: const Offset(1.2, 0.8),
                           ),
                 ),
-
                 Positioned(
                   top: MediaQuery.of(context).size.height * 0.2,
                   left: MediaQuery.of(context).size.width * 0.1,
@@ -366,7 +368,6 @@ class _LoginPageState extends State<LoginPage>
               ],
             ),
           ),
-
           Positioned.fill(
             child: RepaintBoundary(
               child: Center(
@@ -376,7 +377,7 @@ class _LoginPageState extends State<LoginPage>
                     vertical: 40,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadiusGeometry.circular(24),
+                    borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                       child: Container(
@@ -408,7 +409,6 @@ class _LoginPageState extends State<LoginPage>
                         ),
                         constraints: const BoxConstraints(maxWidth: 420),
                         padding: const EdgeInsets.all(32),
-
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -438,7 +438,6 @@ class _LoginPageState extends State<LoginPage>
                                 ],
                               ),
                               const SizedBox(height: 24),
-
                               Column(
                                 key: ValueKey<int>(_tabController.index),
                                 children: [
@@ -471,7 +470,6 @@ class _LoginPageState extends State<LoginPage>
                                 ],
                               ),
                               const SizedBox(height: 28),
-
                               Container(
                                 height: 52,
                                 decoration: BoxDecoration(
@@ -575,7 +573,6 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                               ),
                               const SizedBox(height: 24),
-
                               if (authState.errorMessage != null) ...[
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -653,9 +650,7 @@ class _LoginPageState extends State<LoginPage>
                                     ? 'Required field'
                                     : null,
                               ),
-
                               const SizedBox(height: 16),
-
                               AnimatedSize(
                                 duration: const Duration(milliseconds: 500),
                                 curve: Curves.fastLinearToSlowEaseIn,
@@ -736,7 +731,6 @@ class _LoginPageState extends State<LoginPage>
                                           .slideX(begin: -0.05)
                                     : const SizedBox.shrink(),
                               ),
-
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -810,7 +804,6 @@ class _LoginPageState extends State<LoginPage>
                                     : null,
                               ),
                               const SizedBox(height: 24),
-
                               ElevatedButton(
                                 onPressed: authState.isLoading ? null : _submit,
                                 style: ElevatedButton.styleFrom(
@@ -853,7 +846,6 @@ class _LoginPageState extends State<LoginPage>
                                       ),
                               ),
                               const SizedBox(height: 24),
-
                               Row(
                                 children: [
                                   Expanded(
@@ -893,16 +885,25 @@ class _LoginPageState extends State<LoginPage>
                                   _buildSocialButton(
                                     label: "Google",
                                     icon: Icons.g_mobiledata,
+                                    onPressed: authState.isLoading
+                                        ? () {}
+                                        : () => context
+                                              .read<AuthState>()
+                                              .handleOAuthLogin("google"),
                                   ),
                                   const SizedBox(width: 12),
                                   _buildSocialButton(
                                     label: "GitHub",
                                     icon: Icons.code,
+                                    onPressed: authState.isLoading
+                                        ? () {}
+                                        : () => context
+                                              .read<AuthState>()
+                                              .handleOAuthLogin("github"),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 28),
-
                               Center(
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -946,7 +947,6 @@ class _LoginPageState extends State<LoginPage>
                                 ),
                               ),
                               const SizedBox(height: 20),
-
                               Center(
                                 child: TextButton.icon(
                                   onPressed: _openServerConfigDialog,
@@ -979,7 +979,6 @@ class _LoginPageState extends State<LoginPage>
               ),
             ),
           ),
-
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
             right: 24,
