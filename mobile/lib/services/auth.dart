@@ -39,6 +39,7 @@ class AuthService {
   }
 
   Future<Response> login(String username, String password) async {
+    _dio.options.baseUrl = Env.httpBaseUrl;
     return await _dio.post(
       "/auth/login",
       data: {"username": username, "password": password},
@@ -50,6 +51,7 @@ class AuthService {
     String displayName,
     String password,
   ) async {
+    _dio.options.baseUrl = Env.httpBaseUrl;
     return await _dio.post(
       "/auth/register",
       data: {
@@ -61,6 +63,7 @@ class AuthService {
   }
 
   Future<Response> refreshAccessToken(String refreshToken) async {
+    _dio.options.baseUrl = Env.httpBaseUrl;
     return await _dio.post(
       "/auth/refresh",
       data: {"refresh_token": refreshToken},
@@ -68,10 +71,10 @@ class AuthService {
   }
 
   Future<Response> getCurrentUser(String token) async {
+    _dio.options.baseUrl = Env.httpBaseUrl;
     return await _dio.get(
       '/users/me',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
   }
-
 }
