@@ -154,3 +154,32 @@ func (r *E2EERepository) InvalidateUserVerifications(ctx context.Context, uid st
 	_, err := config.DB.Exec(ctx, query, uid)
 	return err
 }
+
+func (r *E2EERepository) ResetUserKeys(ctx context.Context, uid string) error {
+	tx, err := config.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `DELETE FROM user_devices WHERE user_id = $1::uuid;`, uid)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `DELETE FROM one_time_prekeys WHERE user_id = $1::uuid;`, uid)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE user_verifications 
+		SET is_verified = FALSE, updated_at = NOW() 
+		WHERE verified_user_id = $1::uuid;
+	`, uid)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}

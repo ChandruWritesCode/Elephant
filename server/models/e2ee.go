@@ -33,3 +33,7 @@ type VerificationStatusResp struct {
 	VerifiedUserID string `json:"verified_user_id"`
 	IsVerified     bool   `json:"is_verified"`
 }
+
+type ResetKeysReq struct {
+	Password string `json:"password"`
+}
