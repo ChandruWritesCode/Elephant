@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/commandlinecoding/elephant/server/env"
@@ -12,13 +13,24 @@ import (
 
 var DB *pgxpool.Pool
 
+func isLocalHost(host string) bool {
+	h := strings.ToLower(host)
+	return h == "localhost" || h == "127.0.0.1" || h == "::1" || strings.HasPrefix(h, "172.")
+}
+
 func InitDatabase() {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+	sslMode := "require"
+	if isLocalHost(env.POSTGRES_HOST) {
+		sslMode = "disable"
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		env.POSTGRES_USER,
 		env.POSTGRES_PASSWORD,
 		env.POSTGRES_HOST,
 		env.POSTGRES_PORT,
 		env.POSTGRES_DB,
+		sslMode,
 	)
 
 	cfg, err := pgxpool.ParseConfig(dsn)
