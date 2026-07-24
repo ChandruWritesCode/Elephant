@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/pages/select_contact_page.dart';
 import 'package:mobile/pages/settings_page.dart';
@@ -36,81 +37,86 @@ class _NewChatPageState extends State<NewChatPage> {
     final inputController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        title: Text(
-          "Find by Username",
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: TextField(
-          controller: inputController,
-          autofocus: true,
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          decoration: InputDecoration(
-            hintText: "Enter minimum 3 characters...",
-            hintStyle: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: AlertDialog(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: Text(
+            "Find by Username",
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Cancel",
-              style: TextStyle(
+          content: TextField(
+            controller: inputController,
+            autofocus: true,
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            decoration: InputDecoration(
+              hintText: "Enter minimum 3 characters...",
+              hintStyle: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
             ),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                "Cancel",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
-            onPressed: () {
-              final text = inputController.text.trim();
-              if (text.length >= 3) {
-                context.read<ChatController>().queryUsers(text);
-                setState(() {
-                  _searchController.text = text;
-                });
-                Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      "Search query must be at least 3 characters.",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              onPressed: () {
+                final text = inputController.text.trim();
+                if (text.length >= 3) {
+                  context.read<ChatController>().queryUsers(text);
+                  setState(() {
+                    _searchController.text = text;
+                  });
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Search query must be at least 3 characters.",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
                       ),
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.errorContainer,
                     ),
-                   backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.errorContainer,
-                  ),
-                );
-              }
-            },
-            child: Text(
-              "Search",
-              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+                  );
+                }
+              },
+              child: Text(
+                "Search",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -255,7 +261,9 @@ class _NewChatPageState extends State<NewChatPage> {
                             style: TextStyle(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurfaceVariant, fontSize: 15),
+                              ).colorScheme.onSurfaceVariant,
+                              fontSize: 15,
+                            ),
                           ),
                         )
                       : ListView.builder(
@@ -338,11 +346,15 @@ class _NewChatPageState extends State<NewChatPage> {
                         onTap: () {},
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(left: 16, top: 20, bottom: 8),
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          top: 20,
+                          bottom: 8,
+                        ),
                         child: Text(
                           "Recent Contacts",
                           style: TextStyle(
-                           color: Theme.of(
+                            color: Theme.of(
                               context,
                             ).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.bold,
