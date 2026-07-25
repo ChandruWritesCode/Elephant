@@ -171,37 +171,44 @@ class SettingsPage extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: 20),
-                      Hero(
-                        tag: 'User Data',
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Spacer(),
-                              Text(
-                                user != null ? user.displayName : 'Profile N/A',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
+                      Expanded(
+                        child: Hero(
+                          tag: 'User Data',
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Spacer(),
+                                Text(
+                                  user != null
+                                      ? user.displayName
+                                      : 'Profile N/A',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                  softWrap: true,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              Text(
-                                user != null
-                                    ? '@${user.username}'
-                                    : 'Could not load profile',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
+                                Text(
+                                  user != null
+                                      ? '@${user.username}'
+                                      : 'Could not load profile',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
-                              ),
-                              Spacer(),
-                            ],
+                                Spacer(),
+                              ],
+                            ),
                           ),
                         ),
                       ),

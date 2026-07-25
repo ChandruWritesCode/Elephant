@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/auth.dart';
 import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/pages/chat_page.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -297,88 +298,107 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
     showModalBottomSheet(
       context: context,
       builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text('Message ${member.displayName}'),
-                onTap: () {
-                  /* Navigate to 1-on-1 chat */
-                },
-              ),
-              ListTile(
-                title: Text('View Profile (@${member.username})'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              if (isCurrentUserAdmin &&
-                  member.userId != context.read<AuthState>().currentUser?.id)
-                ListTile(
-                  title: const Text(
-                    'Remove from group',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Remove Participant'),
-                        content: Text(
-                          'Are you sure you want to remove ${member.displayName} from this group?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
+        return ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: Text('Message @${member.username}'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatPage(
+                            chatUserId: member.userId,
+                            displayName: member.displayName,
+                            isGroup: false,
                           ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context, true);
-                            },
-                            child: const Text(
-                              'Remove',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    if (confirm == true && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Removing member...'),
-                          duration: Duration(seconds: 1),
                         ),
                       );
-
-                      final success = await context
-                          .read<GroupController>()
-                          .removeMemberFromGroup(widget.chatId, member.userId);
-
-                      if (success && mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${member.displayName} removed.'),
+                    },
+                  ),
+                  // feels redundent to have a view profile option since we don't have a profile page yet
+                  // ListTile(
+                  //   title: Text('View Profile (@${member.username})'),
+                  //   onTap: () {
+                  //     Navigator.pop(context);
+                  //   },
+                  // ),
+                  if (isCurrentUserAdmin &&
+                      member.userId !=
+                          context.read<AuthState>().currentUser?.id)
+                    ListTile(
+                      title: const Text(
+                        'Remove from group',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Remove Participant'),
+                            content: Text(
+                              'Are you sure you want to remove ${member.displayName} from this group?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context, true);
+                                },
+                                child: const Text(
+                                  'Remove',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
                           ),
                         );
-                        context.read<ChatController>().fetchGroupMembers(
-                          widget.chatId,
-                        );
-                      } else if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Failed to remove member.'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-            ],
+
+                        if (confirm == true && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Removing member...'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+
+                          final success = await context
+                              .read<GroupController>()
+                              .removeMemberFromGroup(
+                                widget.chatId,
+                                member.userId,
+                              );
+
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${member.displayName} removed.'),
+                              ),
+                            );
+                            context.read<ChatController>().fetchGroupMembers(
+                              widget.chatId,
+                            );
+                          } else if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Failed to remove member.'),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
           ),
         );
       },
