@@ -16,7 +16,7 @@ class AppearanceSettings extends StatelessWidget {
         title: const Text('Appearance'),
         backgroundColor: Theme.of(
           context,
-        ).colorScheme.surface, // Glass effect color
+        ).colorScheme.surface,
         elevation: 0,
       ),
       body: SafeArea(
@@ -35,7 +35,7 @@ class AppearanceSettings extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.65, // Makes the cards taller like a phone
+                  childAspectRatio: 0.65,
                   children: [
                     _ThemeCard(
                       title: 'Frost',
@@ -116,7 +116,6 @@ class _ThemeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(21),
           child: Stack(
             children: [
-              // Mock Chat bubble
               Positioned(
                 right: 16,
                 top: 60,
@@ -129,7 +128,6 @@ class _ThemeCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Mock Glass AppBar
               Positioned(
                 top: 0,
                 left: 0,
@@ -139,7 +137,6 @@ class _ThemeCard extends StatelessWidget {
                   color: themeData.colorScheme.surface,
                 ),
               ),
-              // Mock Glass NavBar
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -149,7 +146,6 @@ class _ThemeCard extends StatelessWidget {
                   color: themeData.colorScheme.surface,
                 ),
               ),
-              // Theme Title
               Positioned(
                 bottom: 50,
                 left: 0,

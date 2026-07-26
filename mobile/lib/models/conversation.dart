@@ -7,6 +7,7 @@ class Conversation {
   final String senderId;
   final bool isRead;
   final int unreadCount;
+  final String? lastMessageSenderId;
 
   Conversation({
     required this.chatUserId,
@@ -16,7 +17,7 @@ class Conversation {
     required this.lastMessageTime,
     required this.senderId,
     required this.isRead,
-    required this.unreadCount,
+    required this.unreadCount, this.lastMessageSenderId,
   });
 
   factory Conversation.fromJson(Map<String, dynamic> json) {
@@ -39,6 +40,7 @@ class Conversation {
       senderId: json['sender_id'] ?? '',
       isRead: json['is_read'] ?? false,
       unreadCount: json['unread_count'] ?? 0,
+      lastMessageSenderId: json['last_message_sender_id'] ?? json['lastMessageSender'],
     );
   }
 }
