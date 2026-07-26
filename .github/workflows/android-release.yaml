@@ -43,8 +43,8 @@ jobs:
       - name: Build release APK
         working-directory: mobile
         run: |
-          flutter build apk --release --split-per-abi
-          flutter build apk --release
+          flutter build apk --release --split-per-abi --no-tree-shake-icons
+          flutter build apk --release --no-tree-shake-icons
 
       - name: Rename APKs with version tag
         run: |
