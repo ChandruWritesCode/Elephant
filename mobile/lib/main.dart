@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/providers/basic_providers.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:mobile/themes/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +24,6 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: themeProvider),
-        ChangeNotifierProvider(create: (_) => BasicProviders()),
         ChangeNotifierProvider(create: (_) => AuthState()),
         ChangeNotifierProvider(create: (_) => ChatController()),
         ChangeNotifierProvider(create: (_) => GroupController()),

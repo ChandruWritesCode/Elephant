@@ -8,7 +8,6 @@ import 'package:mobile/pages/settings%20pages/chats_media.dart';
 import 'package:mobile/pages/settings%20pages/help_about.dart';
 import 'package:mobile/pages/settings%20pages/notifications_settings.dart';
 import 'package:mobile/pages/settings%20pages/privacy_security.dart';
-import 'package:mobile/providers/basic_providers.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -243,15 +242,9 @@ class SettingsPage extends StatelessWidget {
                       icon: Icons.notifications,
                       settingName: 'Notifications',
                       whereTo: NotificationsSettingsPage(),
-                      trailing: Consumer<BasicProviders>(
-                        builder: (context, basicProvider, child) {
-                          return Switch(
-                            value: basicProvider.notificationsSwitch,
-                            onChanged: (value) {
-                              basicProvider.toggleNotifications();
-                            },
-                          );
-                        },
+                      trailing: Switch(
+                        value: false,
+                        onChanged: (value) {},
                       ),
                     ),
                     Divider(),

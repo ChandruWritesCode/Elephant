@@ -31,6 +31,14 @@ class AuthService {
     await _storage.write(key: "refresh_token", value: refreshToken);
   }
 
+  Future<void> saveUserProfile(String userJson) async {
+    await _storage.write(key: "cached_user_profile", value: userJson);
+  }
+
+  Future<String?> getCachedUserProfile() async {
+    return await _storage.read(key: "cached_user_profile");
+  }
+
   Future<void> logout() async {
     _cachedAccessToken = null;
     _cachedRefreshToken = null;

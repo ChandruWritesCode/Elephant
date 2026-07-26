@@ -32,7 +32,6 @@ class AccountsSettings extends StatelessWidget {
             width: double.infinity,
             height: 150,
             child: Padding(
-              // Moved padding OUTSIDE the Hero
               padding: const EdgeInsets.only(
                 left: 16.0,
                 top: 10.0,
@@ -183,7 +182,7 @@ class AccountsSettings extends StatelessWidget {
               await context.read<AuthState>().logout();
 
               if (context.mounted) {
-                context.read<ChatController>().clearSessionData();
+                await context.read<ChatController>().clearSessionData();
                 context.read<GroupController>().clearGroupData();
                 Navigator.pushAndRemoveUntil(
                   context,

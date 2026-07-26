@@ -13,11 +13,11 @@ class QuotedMessage {
 
   factory QuotedMessage.fromJson(Map<String, dynamic> json) {
     return QuotedMessage(
-      id: json['id'] ?? '',
-      senderId: json['sender_id'] ?? '',
-      senderDisplayName:
-          json['sender_display_name'] ?? json['sender_name'] ?? '',
-      content: json['content'] ?? '',
+      id: json['id']?.toString() ?? '',
+      senderId: json['sender_id']?.toString() ?? '',
+      senderDisplayName: json['sender_display_name']?.toString() ?? 
+                         json['sender_name']?.toString() ?? '',
+      content: json['content']?.toString() ?? '',
     );
   }
 
@@ -38,6 +38,7 @@ class Message {
   final bool isRead;
   final String? replyToMessageId;
   final QuotedMessage? quotedMessage;
+  final String syncStatus;
 
   Message({
     required this.id,
@@ -48,28 +49,56 @@ class Message {
     required this.isRead,
     this.replyToMessageId,
     this.quotedMessage,
+    this.syncStatus = 'synced',
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate = DateTime.now();
+    if (json['created_at'] != null) {
+      if (json['created_at'] is int) {
+        parsedDate = DateTime.fromMillisecondsSinceEpoch(json['created_at']);
+      } else {
+        parsedDate = DateTime.parse(json['created_at'].toString()).toLocal();
+      }
+    }
+
     return Message(
-      id: json['client_message_id'] ?? json['message_id'] ?? json['id'] ?? '',
-      senderId: json['sender_id'] ?? '',
-      receiverId: json['receiver_id'] ?? '',
-      content: json['content'] ?? '',
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at']).toLocal()
-          : DateTime.now(),
-      isRead: json['is_read'] ?? false,
-      replyToMessageId: json['reply_to_message_id'],
+      id: json['client_message_id']?.toString() ?? 
+          json['message_id']?.toString() ?? 
+          json['id']?.toString() ?? '',
+      senderId: json['sender_id']?.toString() ?? '',
+      receiverId: json['receiver_id']?.toString() ?? '',
+      content: json['content']?.toString() ?? '',
+      createdAt: parsedDate,
+      isRead: json['is_read'] == 1 || json['is_read'] == true,
+      replyToMessageId: json['reply_to_message_id']?.toString(),
       quotedMessage: json['quoted_message'] != null
           ? QuotedMessage.fromJson(json['quoted_message'])
           : null,
+      syncStatus: json['sync_status']?.toString() ?? 'synced',
     );
   }
 
-  Message copyWith({bool? isRead}) {
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'sender_id': senderId,
+      'receiver_id': receiverId,
+      'content': content,
+      'created_at': createdAt.millisecondsSinceEpoch,
+      'is_read': isRead ? 1 : 0,
+      'reply_to_id': replyToMessageId,
+      'sync_status': syncStatus,
+    };
+  }
+
+  Message copyWith({
+    bool? isRead,
+    String? id,
+    String? syncStatus,
+  }) {
     return Message(
-      id: id,
+      id: id ?? this.id,
       senderId: senderId,
       receiverId: receiverId,
       content: content,
@@ -77,6 +106,7 @@ class Message {
       isRead: isRead ?? this.isRead,
       replyToMessageId: replyToMessageId,
       quotedMessage: quotedMessage,
+      syncStatus: syncStatus ?? this.syncStatus,
     );
   }
 }

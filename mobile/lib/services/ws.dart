@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -6,12 +7,13 @@ import '../core/constants.dart';
 class WebSocketService {
   WebSocketChannel? _channel;
   bool _isConnected = false;
+  Timer? _heartbeatTimer;
 
   Stream<dynamic>? get stream => _channel?.stream;
   bool get isConnected => _isConnected;
 
-  Future<void> connect(String token) async {
-    if (_isConnected) return;
+  Future<bool> connect(String token) async {
+    if (_isConnected) return true;
     try {
       final wsUrl = Uri.parse("${Env.wsBaseUrl}?token=$token");
       _channel = WebSocketChannel.connect(wsUrl);
@@ -20,14 +22,27 @@ class WebSocketService {
 
       _isConnected = true;
       debugPrint("WebSocket Pipeline Connected straight to: ${Env.wsBaseUrl}");
+      
+      _startHeartbeat();
+      return true;
     } catch (e) {
       _isConnected = false;
       debugPrint("WebSocket connection failure (Handshake rejected): $e");
+      return false;
     }
   }
 
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_isConnected) {
+        emit({"type": "ping"});
+      }
+    });
+  }
+
   void emit(Map<String, dynamic> payload) {
-    if (!_isConnected) return;
+    if (!_isConnected || _channel == null) return;
     debugPrint("Sending Payload to WS: ${jsonEncode(payload)}");
     _channel?.sink.add(jsonEncode(payload));
   }
@@ -41,7 +56,7 @@ class WebSocketService {
     emit({
       "type": "chat",
       "message_id": messageId,
-        "receiver_id": receiverId, 
+      "receiver_id": receiverId, 
       "content": content,
       "reply_to_message_id": replyToMessageId,
     });
@@ -90,6 +105,7 @@ class WebSocketService {
   }
 
   void disconnect() {
+    _heartbeatTimer?.cancel();
     _channel?.sink.close();
     _isConnected = false;
     _channel = null;

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/controllers/auth.dart';
+import 'package:mobile/models/message.dart';
 import 'package:mobile/pages/chat_details_page.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/widgets/chat_screen_modular_widgets.dart';
@@ -39,7 +40,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       ItemPositionsListener.create();
 
   bool _showScrollToBottom = false;
-  // ignore: prefer_final_fields
   bool _isNearBottom = true;
   final Set<int> _selectedIndices = {};
   dynamic _replyingToMessage;
@@ -77,8 +77,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     _itemPositionsListener.itemPositions.removeListener(_scrollListener);
 
+    final closedChatId = widget.chatUserId;
+
     Future.microtask(() {
-      _chatController.closeChat();
+      _chatController.closeChat(closedChatId);
     });
 
     _highlightTimer?.cancel();
@@ -98,7 +100,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  void _scrollToAndHighlight(String messageId) async {
+  void _scrollToAndHighlight(String messageId) {
     setState(() {
       _isSearchMode = false;
       _chatSearchController.clear();
@@ -106,8 +108,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     });
 
     final chatState = context.read<ChatController>();
-    final activeChat = chatState.activeChat;
     final bool isTyping = chatState.isPeerTyping;
+
+    final activeChat = chatState.activeChat;
 
     final targetIndex = activeChat.indexWhere((msg) => msg.id == messageId);
 
@@ -115,11 +118,11 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       final int realVisualIndex =
           (activeChat.length - 1 - targetIndex) + (isTyping ? 3 : 2);
 
-      await _itemScrollController.scrollTo(
+      _itemScrollController.scrollTo(
         index: realVisualIndex,
-        duration: const Duration(milliseconds: 1000),
+        duration: const Duration(milliseconds: 600),
         curve: Curves.easeInOutCubic,
-        alignment: 0.4,
+        alignment: 0.3,
       );
 
       setState(() {
@@ -134,9 +137,12 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           });
         }
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message is too far back to scroll to.')),
+      );
     }
   }
-
   void _scrollListener() {
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return;
@@ -217,12 +223,16 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     });
   }
 
-  void _copySelectedMessages(List<dynamic> activeChat) {
+  void _copySelectedMessages() async {
     final sortedIndices = _selectedIndices.toList()..sort();
+
+    final messages = await context
+        .read<ChatController>()
+        .getLocalMessagesForChat(widget.chatUserId);
 
     final selectedTexts = sortedIndices
         .map((index) {
-          final msg = activeChat[index];
+          final msg = messages[index];
           final time = DateFormat.jm().format(msg.createdAt);
           final senderName = msg.senderId == _authState.currentUser!.id
               ? "Me"
@@ -286,17 +296,20 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
           hintText: 'Search in chat...',
           border: InputBorder.none,
         ),
-        onChanged: (query) {
+        onChanged: (query) async {
           if (query.trim().isEmpty) {
             setState(() => _searchResults = []);
             return;
           }
 
           final chatState = context.read<ChatController>();
+          final messages = await chatState.getLocalMessagesForChat(
+            widget.chatUserId,
+          );
           final lowercaseQuery = query.toLowerCase();
 
           setState(() {
-            _searchResults = chatState.activeChat.where((msg) {
+            _searchResults = messages.where((msg) {
               return msg.content.toLowerCase().contains(lowercaseQuery);
             }).toList();
           });
@@ -308,20 +321,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final chatState = context.watch<ChatController>();
-    final activeChat = chatState.activeChat;
     final isSelectionMode = _selectedIndices.isNotEmpty;
     final theme = Theme.of(context);
-
-    if (activeChat.length != _previousMessageCount) {
-      final isNewMessage = activeChat.length > _previousMessageCount;
-      _previousMessageCount = activeChat.length;
-
-      if (isNewMessage) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _scrollToBottom(animated: true);
-        });
-      }
-    }
 
     return PopScope(
       canPop: !isSelectionMode,
@@ -378,8 +379,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                 Icons.copy,
                                 color: theme.colorScheme.onPrimary,
                               ),
-                              onPressed: () =>
-                                  _copySelectedMessages(activeChat),
+                              onPressed: () => _copySelectedMessages(),
                             ),
                             IconButton(
                               icon: Icon(
@@ -412,7 +412,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                               ),
                             );
 
-                            // If the user clicked "Search" in ChatDetailsPage
                             if (result == 'start_search') {
                               setState(() {
                                 _isSearchMode = true;
@@ -424,245 +423,282 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         ),
         body: Stack(
           children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.05),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                );
-              },
-              child: chatState.isChatHistoryLoading && activeChat.isEmpty
-                  ? Center(
-                      key: const ValueKey('loading'),
-                      child: CircularProgressIndicator(
-                        color: theme.colorScheme.primary,
+            Builder(
+              builder: (context) {
+                final activeChat = chatState.activeChat;
+
+                if (activeChat.length > _previousMessageCount) {
+                  _previousMessageCount = activeChat.length;
+
+                  if (!_showScrollToBottom &&
+                      _itemScrollController.isAttached) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) _itemScrollController.jumpTo(index: 0);
+                    });
+                  }
+                } else {
+                  _previousMessageCount = activeChat.length;
+                }
+
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.05),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
                       ),
-                    )
-                  : activeChat.isEmpty
-                  ? Center(
-                      key: const ValueKey('empty'),
-                      child: Text(
-                        "No messages yet.\nSay hi!",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 14,
-                        ),
-                      ),
-                    )
-                  : ScrollablePositionedList.builder(
-                      key: const ValueKey('list'),
-                      itemScrollController: _itemScrollController,
-                      itemPositionsListener: _itemPositionsListener,
-                      reverse: true,
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: BouncingScrollPhysics(),
-                      ),
-                      padding: const EdgeInsets.only(
-                        // bottom: 140,
-                        top: 140,
-                        left: 16,
-                        right: 16,
-                      ),
-                      itemCount:
-                          activeChat.length +
-                          (chatState.isPeerTyping ? 2 : 1) +
-                          1,
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return const SizedBox(height: 140);
-                        }
-                        if (index == 1) {
-                          return AnimatedSize(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            child: SizedBox(
-                              height: _replyingToMessage != null ? 80 : 0,
+                    );
+                  },
+                  child: chatState.isChatHistoryLoading && activeChat.isEmpty
+                      ? Center(
+                          key: const ValueKey('loading'),
+                          child: CircularProgressIndicator(
+                            color: theme.colorScheme.primary,
+                          ),
+                        )
+                      : activeChat.isEmpty
+                      ? Center(
+                          key: const ValueKey('empty'),
+                          child: Text(
+                            "No messages yet.\nSay hi!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 14,
                             ),
-                          );
-                        }
-
-                        if (chatState.isPeerTyping && index == 2) {
-                          return _AnimatedMessageItem(
-                            key: const ValueKey('typing_indicator'),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                margin: const EdgeInsets.only(
-                                  bottom: 8,
-                                  top: 4,
+                          ),
+                        )
+                      : ScrollablePositionedList.builder(
+                          key: const ValueKey('list'),
+                          itemScrollController: _itemScrollController,
+                          itemPositionsListener: _itemPositionsListener,
+                          reverse: true,
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.only(
+                            top: 140,
+                            left: 16,
+                            right: 16,
+                          ),
+                          itemCount:
+                              activeChat.length +
+                              (chatState.isPeerTyping ? 2 : 1) +
+                              1,
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return const SizedBox(height: 140);
+                            }
+                            if (index == 1) {
+                              return AnimatedSize(
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOutCubic,
+                                child: SizedBox(
+                                  height: _replyingToMessage != null ? 80 : 0,
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 16,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(16)
-                                      .copyWith(
-                                        bottomLeft: const Radius.circular(0),
-                                      ),
-                                ),
-                                child: Text(
-                                  "Typing...",
-                                  style: TextStyle(
-                                    color: theme.colorScheme.primary,
-                                    fontStyle: FontStyle.italic,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
+                              );
+                            }
 
-                        final int msgIndex =
-                            index - (chatState.isPeerTyping ? 3 : 2);
-                        final int realIndex = activeChat.length - 1 - msgIndex;
-                        final msg = activeChat[realIndex];
-
-                        final bool isHighlighted =
-                            msg.id == _highlightedMessageId;
-                        final bool isSelected = _selectedIndices.contains(
-                          realIndex,
-                        );
-
-                        bool showDateSeparator = false;
-                        if (realIndex == 0) {
-                          showDateSeparator = true;
-                        } else {
-                          final prevMsg = activeChat[realIndex - 1];
-                          if (!_isSameDay(msg.createdAt, prevMsg.createdAt)) {
-                            showDateSeparator = true;
-                          }
-                        }
-
-                        final String cleanSenderId = msg.senderId
-                            .trim()
-                            .toLowerCase();
-                        widget.chatUserId.trim().toLowerCase();
-
-                        final bool isMe =
-                            cleanSenderId == 'me' ||
-                            (_authState.currentUser?.id != null &&
-                                cleanSenderId ==
-                                    _authState.currentUser!.id.toLowerCase());
-
-                        final String senderId = msg.senderId
-                            .trim()
-                            .toLowerCase();
-                        final String? displayName = widget.isGroup
-                            ? (chatState.groupMemberNames[senderId] ??
-                                  'Unknown')
-                            : null;
-
-                        bool showSenderName = widget.isGroup;
-                        if (widget.isGroup && realIndex > 0) {
-                          final previousMsg = activeChat[realIndex - 1];
-
-                          if (previousMsg.senderId.trim().toLowerCase() ==
-                              cleanSenderId) {
-                            showSenderName = false;
-                          }
-                        }
-
-                        return _AnimatedMessageItem(
-                          key: ValueKey(msg.id.toString()),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (showDateSeparator)
-                                Center(
+                            if (chatState.isPeerTyping && index == 2) {
+                              return _AnimatedMessageItem(
+                                key: const ValueKey('typing_indicator'),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
                                   child: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 16,
+                                    margin: const EdgeInsets.only(
+                                      bottom: 8,
+                                      top: 4,
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
+                                      vertical: 12,
+                                      horizontal: 16,
                                     ),
                                     decoration: BoxDecoration(
                                       color: theme
                                           .colorScheme
                                           .surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(16)
+                                          .copyWith(
+                                            bottomLeft: const Radius.circular(
+                                              0,
+                                            ),
+                                          ),
                                     ),
                                     child: Text(
-                                      _formatDateSeparator(msg.createdAt),
+                                      "Typing...",
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
+                                        color: theme.colorScheme.primary,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),
                                 ),
-                              GestureDetector(
-                                onLongPress: () {
-                                  HapticFeedback.selectionClick();
-                                  _toggleSelection(realIndex);
-                                },
-                                onTap: () {
-                                  if (isSelectionMode) {
-                                    _toggleSelection(realIndex);
-                                  }
-                                },
-                                child: AnimatedScale(
-                                  scale: isSelected ? 0.95 : 1.0,
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOutCubic,
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 350),
-                                    decoration: BoxDecoration(
-                                      color: isSelected || isHighlighted
-                                          ? theme.colorScheme.primary
-                                                .withValues(alpha: 0.25)
-                                          : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(12),
+                              );
+                            }
+
+                            final int msgIndex =
+                                index - (chatState.isPeerTyping ? 3 : 2);
+                            final int realIndex =
+                                activeChat.length - 1 - msgIndex;
+                            final msg = activeChat[realIndex];
+
+                            final bool isHighlighted =
+                                msg.id == _highlightedMessageId;
+                            final bool isSelected = _selectedIndices.contains(
+                              realIndex,
+                            );
+
+                            bool showDateSeparator = false;
+                            if (realIndex == 0) {
+                              showDateSeparator = true;
+                            } else {
+                              final prevMsg = activeChat[realIndex - 1];
+                              if (!_isSameDay(
+                                msg.createdAt,
+                                prevMsg.createdAt,
+                              )) {
+                                showDateSeparator = true;
+                              }
+                            }
+
+                            final String cleanSenderId = msg.senderId
+                                .trim()
+                                .toLowerCase();
+                            widget.chatUserId.trim().toLowerCase();
+
+                            final bool isMe =
+                                cleanSenderId == 'me' ||
+                                (_authState.currentUser?.id != null &&
+                                    cleanSenderId ==
+                                        _authState.currentUser!.id
+                                            .toLowerCase());
+
+                            final String senderId = msg.senderId
+                                .trim()
+                                .toLowerCase();
+                            final String? displayName = widget.isGroup
+                                ? (chatState.groupMemberNames[senderId] ??
+                                      'Unknown')
+                                : null;
+
+                            bool showSenderName = widget.isGroup;
+                            if (widget.isGroup && realIndex > 0) {
+                              final previousMsg = activeChat[realIndex - 1];
+
+                              if (previousMsg.senderId.trim().toLowerCase() ==
+                                  cleanSenderId) {
+                                showSenderName = false;
+                              }
+                            }
+
+                            return _AnimatedMessageItem(
+                              key: ValueKey(msg.id.toString()),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (showDateSeparator)
+                                    Center(
+                                      child: Container(
+                                        margin: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: theme
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _formatDateSeparator(msg.createdAt),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    child: SwipeToReply(
-                                      isMe: isMe,
-                                      onReply: () {
-                                        setState(() {
-                                          _replyingToMessage = msg;
-                                        });
-                                      },
-                                      child: ChatBubble(
-                                        message: msg.content,
-                                        isMe: isMe,
-                                        timestamp: msg.createdAt,
-                                        isRead: msg.isRead,
-                                        quotedMessage: msg.quotedMessage,
-                                        isGroup: widget.isGroup,
-                                        senderName: showSenderName
-                                            ? displayName
-                                            : null,
-                                        onQuoteTap: msg.quotedMessage != null
-                                            ? () => _scrollToAndHighlight(
-                                                msg.quotedMessage!.id,
-                                              )
-                                            : null,
+                                  GestureDetector(
+                                    onLongPress: () {
+                                      HapticFeedback.selectionClick();
+                                      _toggleSelection(realIndex);
+                                    },
+                                    onTap: () {
+                                      if (isSelectionMode) {
+                                        _toggleSelection(realIndex);
+                                      }
+                                    },
+                                    child: AnimatedScale(
+                                      scale: isSelected ? 0.95 : 1.0,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      curve: Curves.easeOutCubic,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 350,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected || isHighlighted
+                                              ? theme.colorScheme.primary
+                                                    .withValues(alpha: 0.25)
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: SwipeToReply(
+                                          isMe: isMe,
+                                          onReply: () {
+                                            setState(() {
+                                              _replyingToMessage = msg;
+                                            });
+                                          },
+                                          child: ChatBubble(
+                                            message: msg.content,
+                                            isMe: isMe,
+                                            timestamp: msg.createdAt,
+                                            isRead: msg.isRead,
+                                            syncStatus: msg.syncStatus,
+                                            quotedMessage: msg.quotedMessage,
+                                            isGroup: widget.isGroup,
+                                            senderName: showSenderName
+                                                ? displayName
+                                                : null,
+                                            onQuoteTap:
+                                                msg.quotedMessage != null
+                                                ? () => _scrollToAndHighlight(
+                                                    msg.quotedMessage!.id,
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            );
+                          },
+                        ),
+                );
+              },
             ),
 
             if (_isSearchMode)
@@ -716,7 +752,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                   ),
                                 ),
                                 onTap: () {
-                                  // Close search mode
                                   setState(() {
                                     _isSearchMode = false;
                                     _chatSearchController.clear();

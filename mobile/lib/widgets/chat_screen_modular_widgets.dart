@@ -52,28 +52,32 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        color: theme.textTheme.titleLarge?.color,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: theme.textTheme.titleLarge?.color,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    status != null
-                        ? Text(
-                            status! == UserStatus.online ? "Online" : "Offline",
-                            style: TextStyle(
-                              color: theme.textTheme.bodySmall?.color,
-                              fontSize: 12,
-                              fontWeight: FontWeight.normal,
-                            ),
-                          )
-                        : SizedBox.shrink(),
-                  ],
+                      status != null
+                          ? Text(
+                              status! == UserStatus.online ? "Online" : "Offline",
+                              style: TextStyle(
+                                color: theme.textTheme.bodySmall?.color,
+                                fontSize: 12,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            )
+                          : SizedBox.shrink(),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -96,6 +100,7 @@ class ChatBubble extends StatelessWidget {
   final QuotedMessage? quotedMessage;
   final String? senderName;
   final bool isGroup;
+  final String syncStatus;
 
   const ChatBubble({
     super.key,
@@ -107,6 +112,7 @@ class ChatBubble extends StatelessWidget {
     this.senderName,
     this.isGroup = false,
     this.onQuoteTap,
+    this.syncStatus = 'synced',
   });
 
   Color _getSenderColor(String name) {
@@ -273,12 +279,14 @@ class ChatBubble extends StatelessWidget {
                     if (isMe) ...[
                       const SizedBox(width: 4),
                       Icon(
-                        isRead ? Icons.done_all : Icons.done,
+                        syncStatus == 'pending'
+                            ? Icons.access_time
+                            : (isRead ? Icons.done_all : Icons.done),
                         size: 14,
-                        color: isRead
-                            ? (isMe
-                                  ? Colors.lightBlueAccent
-                                  : theme.colorScheme.primary)
+                        color: syncStatus == 'pending'
+                            ? theme.colorScheme.onPrimary.withValues(alpha: 0.5)
+                            : isRead
+                            ? Colors.lightBlueAccent
                             : theme.colorScheme.onPrimary.withValues(
                                 alpha: 0.7,
                               ),

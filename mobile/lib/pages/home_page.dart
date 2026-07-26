@@ -234,6 +234,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget buildHomeTab(ChatController chatState) {
     final theme = Theme.of(context);
+    final isOffline = chatState.isOffline;
 
     return RefreshIndicator(
       color: theme.colorScheme.primary,
@@ -423,6 +424,19 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(width: 4),
             ],
           ),
+          if (isOffline)
+            SliverToBoxAdapter(
+              child: Container(
+                color: Colors.redAccent,
+                width: double.infinity,
+                padding: const EdgeInsets.all(4),
+                child: const Text(
+                  "You are offline. Showing cached chats.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            ),
           chatState.inbox.isEmpty
               ? SliverFillRemaining(
                   hasScrollBody: false,
@@ -477,7 +491,6 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final chatState = context.watch<ChatController>();
     final theme = Theme.of(context);
-
     return PopScope(
       canPop: _selectedChatIds.isEmpty,
       onPopInvokedWithResult: (didPop, result) {
@@ -525,8 +538,7 @@ class _HomePageState extends State<HomePage> {
                   opacity: (_isFabVisible && !_isSelectionMode) ? 1.0 : 0.0,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: 
-                    SizedBox(
+                    child: SizedBox(
                       width: 56,
                       height: 56,
                       child: ClipRRect(

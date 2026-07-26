@@ -64,13 +64,29 @@ class AuthState extends ChangeNotifier {
     try {
       final res = await _authService.getCurrentUser(_token!);
       final data = res.data;
-
       final userData = data['data'] ?? data['user'] ?? data;
 
       _currentUser = UserModel.fromJson(userData);
+      
+      await _authService.saveUserProfile(jsonEncode(userData));
       notifyListeners();
+      
     } catch (e) {
-      debugPrint("Failed to load user profile: $e");
+      debugPrint("Network failed, attempting to load cached user profile: $e");
+      
+      try {
+        final cachedData = await _authService.getCachedUserProfile();
+        if (cachedData != null) {
+          final decodedData = jsonDecode(cachedData);
+          _currentUser = UserModel.fromJson(decodedData);
+          notifyListeners();
+        } else {
+           _errorMessage = "No internet connection and no cached profile.";
+           notifyListeners();
+        }
+      } catch (cacheError) {
+        debugPrint("Cache read failed: $cacheError");
+      }
     }
   }
 

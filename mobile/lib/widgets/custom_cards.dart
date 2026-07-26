@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile/controllers/auth.dart';
 import 'package:mobile/controllers/chat.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_rich_text/simple_rich_text.dart';
 import '../models/inbox_item.dart';
 import '../pages/chat_page.dart';
 
@@ -38,6 +37,7 @@ class CustomChatCard extends StatelessWidget {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final String timeLabel = _formatTimestamp(conversation.timestamp);
     final bool hasUnread = conversation.unreadCount > 0;
@@ -45,15 +45,26 @@ class CustomChatCard extends StatelessWidget {
 
     final currentUserId = context.read<AuthState>().currentUser?.id;
 
+    final String? safeSenderId = conversation.lastMessageSender
+        ?.trim()
+        .toLowerCase();
+    final String? safeMyId = currentUserId?.trim().toLowerCase();
+
+    final bool isMe =
+        safeSenderId == 'me' || (safeMyId != null && safeSenderId == safeMyId);
+
     String? senderName;
     if (conversation.isGroup && conversation.lastMessageSender != null) {
-      if (conversation.lastMessageSender == currentUserId) {
+      if (isMe) {
         senderName = "You";
       } else {
         senderName =
             chatState.userCache[conversation.lastMessageSender!] ?? "Member";
       }
     }
+
+    final String syncStatus = conversation.lastMessageSyncStatus ?? 'synced';
+    final bool isRead = conversation.lastMessageIsRead ?? false;
 
     return Material(
       color: isSelected
@@ -136,18 +147,45 @@ class CustomChatCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    SimpleRichText(
-                      senderName != null
-                          ? "*$senderName:* ${conversation.lastMessage.replaceAll('\n', ' ')}"
-                          : conversation.lastMessage.replaceAll('\n', ' '),
-                      maxLines: 1,
-                      textOverflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: hasUnread
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 15,
-                      ),
+                    Row(
+                      children: [
+                        if (isMe) ...[
+                          Icon(
+                            syncStatus == 'pending'
+                                ? Icons.access_time
+                                : (isRead ? Icons.done_all : Icons.done),
+                            size: 16,
+                            color: syncStatus == 'pending'
+                                ? Theme.of(context).colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.5)
+                                : isRead
+                                ? Colors.lightBlueAccent
+                                : Theme.of(context).colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                          child: Text(
+                            senderName != null
+                                ? "*$senderName:* ${conversation.lastMessage.replaceAll('\n', ' ')}"
+                                : conversation.lastMessage.replaceAll(
+                                    '\n',
+                                    ' ',
+                                  ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: hasUnread
+                                  ? Theme.of(context).colorScheme.onSurface
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
