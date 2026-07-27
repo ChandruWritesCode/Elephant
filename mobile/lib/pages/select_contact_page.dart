@@ -327,9 +327,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
                               (thread) => _buildContactTile(
                                 id: thread.id,
                                 displayName: thread.title,
-                                username: thread.title
-                                    .replaceAll(' ', '')
-                                    .toLowerCase(),
+                                username: thread.username ?? "",
                               ),
                             ),
                     ],
