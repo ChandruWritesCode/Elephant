@@ -22,7 +22,7 @@ class Group {
 
     DateTime msgTime = DateTime.now();
     if (json['last_message_time'] != null) {
-      msgTime = DateTime.parse(json['last_message_time']);
+      msgTime = DateTime.parse(json['last_message_time']).toLocal();
     } else if (json['created_at'] != null) {
       msgTime = DateTime.parse(json['created_at']);
     }
