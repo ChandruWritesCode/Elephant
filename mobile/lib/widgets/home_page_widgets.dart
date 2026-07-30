@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/controllers/auth.dart';
-import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/controllers/auth_state.dart';
+import 'package:mobile/controllers/chat_controller.dart';
 import 'package:provider/provider.dart';
 import '../models/inbox_item.dart';
-import '../pages/chat_page.dart';
+import '../pages/chat/chat_page.dart';
 
 class CustomChatCard extends StatelessWidget {
   final InboxItem conversation;

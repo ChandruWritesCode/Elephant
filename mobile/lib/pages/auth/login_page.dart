@@ -2,10 +2,10 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:mobile/pages/settings%20pages/appearance.dart';
+import 'package:mobile/pages/settings/appearance.dart';
 import 'package:provider/provider.dart';
-import '../core/constants.dart';
-import '../controllers/auth.dart';
+import '../../core/constants.dart';
+import '../../controllers/auth_state.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

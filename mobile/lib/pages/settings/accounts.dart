@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile/controllers/auth.dart';
-import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/controllers/auth_state.dart';
+import 'package:mobile/controllers/chat_controller.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';

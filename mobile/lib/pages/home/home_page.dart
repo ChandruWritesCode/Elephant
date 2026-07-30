@@ -1,12 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:mobile/controllers/chat.dart';
-import 'package:mobile/pages/settings_page.dart';
-import 'package:mobile/services/auth.dart';
-import 'package:mobile/widgets/custom_cards.dart';
+import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/pages/settings/settings_page.dart';
+import 'package:mobile/services/auth_service.dart';
+import 'package:mobile/widgets/home_page_widgets.dart';
 import 'package:provider/provider.dart';
-import 'new_chat_page.dart';
+import '../new chat/new_chat_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

@@ -4,12 +4,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/controllers/auth.dart';
-import 'package:mobile/models/message.dart';
-import 'package:mobile/pages/chat_details_page.dart';
+import 'package:mobile/controllers/auth_state.dart';
+import 'package:mobile/pages/chat/chat_details_page.dart';
 import 'package:provider/provider.dart';
-import 'package:mobile/widgets/chat_screen_modular_widgets.dart';
-import 'package:mobile/controllers/chat.dart';
+import 'package:mobile/widgets/chat_page_widgets.dart';
+import 'package:mobile/controllers/chat_controller.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class ChatPage extends StatefulWidget {

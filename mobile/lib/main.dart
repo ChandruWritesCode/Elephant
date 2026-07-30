@@ -3,11 +3,11 @@ import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:mobile/themes/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'core/constants.dart';
-import 'controllers/auth.dart';
-import 'controllers/chat.dart';
-import 'services/auth.dart';
-import 'pages/login_page.dart';
-import 'pages/home_page.dart';
+import 'controllers/auth_state.dart';
+import 'controllers/chat_controller.dart';
+import 'services/auth_service.dart';
+import 'pages/auth/login_page.dart';
+import 'pages/home/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

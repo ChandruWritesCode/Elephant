@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import '../core/constants.dart';
-import '../controllers/auth.dart';
-import 'auth.dart';
+import '../controllers/auth_state.dart';
+import 'auth_service.dart';
 
 class ApiService {
   final Dio _dio = Dio();

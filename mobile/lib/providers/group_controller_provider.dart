@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobile/models/group.dart';
-import 'package:mobile/services/api.dart';
+import 'package:mobile/services/api_services.dart';
 
 class GroupController extends ChangeNotifier {
   final Map<String, Map<String, String>> _selectedContacts = {};

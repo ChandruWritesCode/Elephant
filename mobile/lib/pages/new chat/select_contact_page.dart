@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:mobile/controllers/chat.dart';
-import 'package:mobile/pages/chat_page.dart';
+import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/pages/chat/chat_page.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
 
