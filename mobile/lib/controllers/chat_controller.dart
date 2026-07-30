@@ -6,7 +6,7 @@ import 'package:mobile/controllers/auth_state.dart';
 import 'package:mobile/models/group.dart';
 import 'package:mobile/models/inbox_item.dart';
 import 'package:mobile/pages/chat/chat_details_page.dart';
-import 'package:mobile/services/db_services.dart';
+import 'package:mobile/cache/database/services/db_services.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../models/message.dart';
