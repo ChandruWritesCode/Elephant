@@ -2,18 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile/controllers/auth.dart';
+import 'package:mobile/controllers/auth_state.dart';
 import 'package:mobile/models/group.dart';
 import 'package:mobile/models/inbox_item.dart';
-import 'package:mobile/pages/chat_details_page.dart';
+import 'package:mobile/pages/chat/chat_details_page.dart';
 import 'package:mobile/services/db_services.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../models/message.dart';
 import '../models/conversation.dart';
-import '../services/api.dart';
-import '../services/ws.dart';
-import '../services/auth.dart';
+import '../services/api_services.dart';
+import '../services/ws_service.dart';
+import '../services/auth_service.dart';
 
 class ChatController extends ChangeNotifier with WidgetsBindingObserver {
   final ApiService _api = ApiService();
@@ -843,7 +843,7 @@ class ChatController extends ChangeNotifier with WidgetsBindingObserver {
         }
 
         final String cleanSenderId = incomingMsg.senderId.trim().toLowerCase();
-        final String? myId = _user.currentUser?.id?.trim().toLowerCase();
+        final String? myId = _user.currentUser?.id.trim().toLowerCase();
         final bool isMe = (cleanSenderId == 'me' || cleanSenderId == myId);
 
         _updateLocalInboxState(

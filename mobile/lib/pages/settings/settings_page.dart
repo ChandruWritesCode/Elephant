@@ -1,13 +1,13 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:mobile/controllers/auth.dart';
-import 'package:mobile/pages/settings%20pages/accounts.dart';
-import 'package:mobile/pages/settings%20pages/appearance.dart';
-import 'package:mobile/pages/settings%20pages/chats_media.dart';
-import 'package:mobile/pages/settings%20pages/help_about.dart';
-import 'package:mobile/pages/settings%20pages/notifications_settings.dart';
-import 'package:mobile/pages/settings%20pages/privacy_security.dart';
+import 'package:mobile/controllers/auth_state.dart';
+import 'package:mobile/pages/settings/accounts.dart';
+import 'package:mobile/pages/settings/appearance.dart';
+import 'package:mobile/pages/settings/chats_media.dart';
+import 'package:mobile/pages/settings/help_about.dart';
+import 'package:mobile/pages/settings/notifications_settings.dart';
+import 'package:mobile/pages/settings/privacy_security.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 

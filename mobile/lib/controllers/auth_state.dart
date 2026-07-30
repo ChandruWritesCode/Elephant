@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:mobile/models/user.dart';
 import '../core/constants.dart';
-import '../services/auth.dart';
+import '../services/auth_service.dart';
 
 class AuthState extends ChangeNotifier {
   final AuthService _authService = AuthService();

@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:mobile/pages/select_contact_page.dart';
-import 'package:mobile/pages/settings_page.dart';
+import 'package:mobile/pages/new%20chat/select_contact_page.dart';
+import 'package:mobile/pages/settings/settings_page.dart';
 import 'package:provider/provider.dart';
-import 'package:mobile/controllers/chat.dart';
-import 'chat_page.dart';
+import 'package:mobile/controllers/chat_controller.dart';
+import '../chat/chat_page.dart';
 
 class NewChatPage extends StatefulWidget {
   const NewChatPage({super.key});
