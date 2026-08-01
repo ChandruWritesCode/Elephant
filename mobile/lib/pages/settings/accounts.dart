@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/controllers/auth_state.dart';
-import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/controllers/chat/chat_connection_controller.dart';
+import 'package:mobile/controllers/chat/group_details_controller.dart';
+import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/main.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
@@ -182,7 +184,12 @@ class AccountsSettings extends StatelessWidget {
               await context.read<AuthState>().logout();
 
               if (context.mounted) {
-                await context.read<ChatController>().clearSessionData();
+                context.read<ChatConnectionController>().disconnectWebSocket();
+
+                context.read<GroupDetailsController>().clearCache();
+
+                context.read<InboxController>().clearInbox();
+
                 context.read<GroupController>().clearGroupData();
                 Navigator.pushAndRemoveUntil(
                   context,

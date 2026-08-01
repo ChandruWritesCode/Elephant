@@ -5,6 +5,14 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../core/constants.dart';
 
 class WebSocketService {
+  static final WebSocketService _instance = WebSocketService._internal();
+
+  factory WebSocketService() {
+    return _instance;
+  }
+
+  WebSocketService._internal();
+
   WebSocketChannel? _channel;
   bool _isConnected = false;
   Timer? _heartbeatTimer;
@@ -22,7 +30,7 @@ class WebSocketService {
 
       _isConnected = true;
       debugPrint("WebSocket Pipeline Connected straight to: ${Env.wsBaseUrl}");
-      
+
       _startHeartbeat();
       return true;
     } catch (e) {
@@ -56,7 +64,7 @@ class WebSocketService {
     emit({
       "type": "chat",
       "message_id": messageId,
-      "receiver_id": receiverId, 
+      "receiver_id": receiverId,
       "content": content,
       "reply_to_message_id": replyToMessageId,
     });

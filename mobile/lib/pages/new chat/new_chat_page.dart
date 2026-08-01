@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:mobile/controllers/chat/active_chat_controller.dart';
+import 'package:mobile/controllers/chat/chat_search_controller.dart';
+import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/pages/new%20chat/select_contact_page.dart';
 import 'package:mobile/pages/settings/settings_page.dart';
 import 'package:provider/provider.dart';
-import 'package:mobile/controllers/chat_controller.dart';
 import '../chat/chat_page.dart';
 
 class NewChatPage extends StatefulWidget {
@@ -25,11 +27,11 @@ class _NewChatPageState extends State<NewChatPage> {
     super.dispose();
   }
 
-  void _onSearchChanged(String value, ChatController chatState) {
+  void _onSearchChanged(String value, ChatSearchController searchChat) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      chatState.queryUsers(value);
+      searchChat.queryUsers(value);
     });
   }
 
@@ -87,7 +89,7 @@ class _NewChatPageState extends State<NewChatPage> {
               onPressed: () {
                 final text = inputController.text.trim();
                 if (text.length >= 3) {
-                  context.read<ChatController>().queryUsers(text);
+                  context.read<ChatSearchController>().queryUsers(text);
                   setState(() {
                     _searchController.text = text;
                   });
@@ -151,7 +153,9 @@ class _NewChatPageState extends State<NewChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final chatState = context.watch<ChatController>();
+    final searchState = context.watch<ChatSearchController>();
+    final inboxState = context.watch<InboxController>();
+    final activeChatState = context.read<ActiveChatController>();
     final String searchInput = _searchController.text.trim();
     final bool isSearching = searchInput.isNotEmpty;
     final bool hasValidQueryLength = searchInput.length >= 3;
@@ -198,7 +202,7 @@ class _NewChatPageState extends State<NewChatPage> {
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               controller: _searchController,
-              onChanged: (val) => _onSearchChanged(val, chatState),
+              onChanged: (val) => _onSearchChanged(val, searchState),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: "Name, username or number",
@@ -218,7 +222,7 @@ class _NewChatPageState extends State<NewChatPage> {
                         ),
                         onPressed: () {
                           _searchController.clear();
-                          chatState.queryUsers("");
+                          searchState.queryUsers("");
                         },
                       )
                     : null,
@@ -248,13 +252,13 @@ class _NewChatPageState extends State<NewChatPage> {
                             ),
                           ),
                         )
-                      : chatState.isSearchLoading
+                      : searchState.isSearchLoading
                       ? Center(
                           child: CircularProgressIndicator(
                             color: Theme.of(context).colorScheme.primary,
                           ),
                         )
-                      : chatState.contactSearchResults.isEmpty
+                      : searchState.contactSearchResults.isEmpty
                       ? Center(
                           child: Text(
                             "No users found",
@@ -267,9 +271,10 @@ class _NewChatPageState extends State<NewChatPage> {
                           ),
                         )
                       : ListView.builder(
-                          itemCount: chatState.contactSearchResults.length,
+                          itemCount: searchState.contactSearchResults.length,
                           itemBuilder: (context, index) {
-                            final user = chatState.contactSearchResults[index];
+                            final user =
+                                searchState.contactSearchResults[index];
                             final String displayName =
                                 user['display_name'] ?? 'User';
                             final String username = user['username'] ?? '';
@@ -307,7 +312,7 @@ class _NewChatPageState extends State<NewChatPage> {
                               ),
                               onTap: () {
                                 final String uid = user['id'];
-                                chatState.openChat(uid);
+                                activeChatState.openChat(uid);
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
@@ -362,8 +367,8 @@ class _NewChatPageState extends State<NewChatPage> {
                           ),
                         ),
                       ),
-                      if (chatState.inbox.isNotEmpty)
-                        ...chatState.inbox
+                      if (inboxState.inbox.isNotEmpty)
+                        ...inboxState.inbox
                             .where((thread) => !thread.isGroup)
                             .map(
                               (thread) => ListTile(
@@ -400,7 +405,7 @@ class _NewChatPageState extends State<NewChatPage> {
                                   ),
                                 ),
                                 onTap: () {
-                                  chatState.openChat(thread.id);
+                                  activeChatState.openChat(thread.id);
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(

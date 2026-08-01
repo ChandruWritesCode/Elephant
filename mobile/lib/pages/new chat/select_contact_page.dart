@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/controllers/chat/chat_search_controller.dart';
+import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/pages/chat/chat_page.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
@@ -27,7 +28,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
-        context.read<ChatController>().queryUsers(value);
+        context.read<ChatSearchController>().queryUsers(value);
       }
     });
   }
@@ -110,7 +111,8 @@ class _SelectContactPageState extends State<SelectContactPage> {
 
   @override
   Widget build(BuildContext context) {
-    final chatState = context.watch<ChatController>();
+    final searchState = context.watch<ChatSearchController>();
+    final inboxState = context.watch<InboxController>();
     final bool isSearching = _searchController.text.trim().isNotEmpty;
 
     return Scaffold(
@@ -156,7 +158,9 @@ class _SelectContactPageState extends State<SelectContactPage> {
                               ),
                               onPressed: () {
                                 _searchController.clear();
-                                context.read<ChatController>().queryUsers("");
+                                context.read<ChatSearchController>().queryUsers(
+                                  "",
+                                );
                               },
                             )
                           : null,
@@ -193,7 +197,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
                 _isSearchOpen = !_isSearchOpen;
                 if (!_isSearchOpen) {
                   _searchController.clear();
-                  context.read<ChatController>().queryUsers("");
+                  context.read<ChatSearchController>().queryUsers("");
                 }
               });
             },
@@ -232,13 +236,13 @@ class _SelectContactPageState extends State<SelectContactPage> {
           ),
           Expanded(
             child: isSearching
-                ? (chatState.isSearchLoading
+                ? (searchState.isSearchLoading
                       ? Center(
                           child: CircularProgressIndicator(
                             color: Theme.of(context).colorScheme.primary,
                           ),
                         )
-                      : chatState.contactSearchResults.isEmpty
+                      : searchState.contactSearchResults.isEmpty
                       ? Center(
                           child: Text(
                             "No users found (try entering at least 3 characters to search)",
@@ -252,9 +256,10 @@ class _SelectContactPageState extends State<SelectContactPage> {
                           ),
                         )
                       : ListView.builder(
-                          itemCount: chatState.contactSearchResults.length,
+                          itemCount: searchState.contactSearchResults.length,
                           itemBuilder: (context, index) {
-                            final user = chatState.contactSearchResults[index];
+                            final user =
+                                searchState.contactSearchResults[index];
                             final String id =
                                 (user['id'] ?? user['user_id'] ?? '')
                                     .toString();
@@ -316,8 +321,8 @@ class _SelectContactPageState extends State<SelectContactPage> {
                           ),
                         ),
                       ),
-                      if (chatState.inbox.isNotEmpty)
-                        ...chatState.inbox
+                      if (inboxState.inbox.isNotEmpty)
+                        ...inboxState.inbox
                             .where(
                               (thread) =>
                                   !thread.isGroup &&
@@ -471,7 +476,7 @@ class _SelectContactPageState extends State<SelectContactPage> {
                                                       return;
 
                                                     context
-                                                        .read<ChatController>()
+                                                        .read<InboxController>()
                                                         .loadInbox();
 
                                                     Navigator.of(

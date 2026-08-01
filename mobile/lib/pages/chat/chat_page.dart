@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/controllers/auth_state.dart';
+import 'package:mobile/controllers/chat/active_chat_controller.dart';
+import 'package:mobile/controllers/chat/group_details_controller.dart';
 import 'package:mobile/pages/chat/chat_details_page.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/widgets/chat_page_widgets.dart';
-import 'package:mobile/controllers/chat_controller.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class ChatPage extends StatefulWidget {
@@ -42,7 +43,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   bool _isNearBottom = true;
   final Set<int> _selectedIndices = {};
   dynamic _replyingToMessage;
-  late ChatController _chatController;
+  late ActiveChatController _chatController;
   late AuthState _authState;
 
   Timer? _highlightTimer;
@@ -58,11 +59,18 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     _itemPositionsListener.itemPositions.addListener(_scrollListener);
 
-    _chatController = context.read<ChatController>();
+    _chatController = context.read<ActiveChatController>();
     _authState = context.read<AuthState>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _chatController.openChat(widget.chatUserId, isGroup: widget.isGroup);
+        if (widget.isGroup) {
+          final groupState = context.read<GroupDetailsController>();
+          if (!groupState.hasFetchedGroup(widget.chatUserId)) {
+            groupState.fetchGroupMembers(widget.chatUserId);
+          }
+        }
+
         if (widget.isGroup && widget.isNew) {
           _sendMessage('Hey Everyone!!');
         }
@@ -106,7 +114,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       _searchResults.clear();
     });
 
-    final chatState = context.read<ChatController>();
+    final chatState = context.read<ActiveChatController>();
     final bool isTyping = chatState.isPeerTyping;
 
     final activeChat = chatState.activeChat;
@@ -142,6 +150,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       );
     }
   }
+
   void _scrollListener() {
     final positions = _itemPositionsListener.itemPositions.value;
     if (positions.isEmpty) return;
@@ -190,7 +199,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       replyName = isMe ? "You" : widget.displayName;
     }
 
-    context.read<ChatController>().sendTextMessage(
+    context.read<ActiveChatController>().sendTextMessage(
       text,
       replyingTo: _replyingToMessage,
       replyingToName: replyName,
@@ -226,7 +235,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     final sortedIndices = _selectedIndices.toList()..sort();
 
     final messages = await context
-        .read<ChatController>()
+        .read<ActiveChatController>()
         .getLocalMessagesForChat(widget.chatUserId);
 
     final selectedTexts = sortedIndices
@@ -250,7 +259,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     _clearSelection();
   }
 
-  UserStatus _getPresenceStatusText(ChatController state) {
+  UserStatus _getPresenceStatusText(ActiveChatController state) {
     return state.isPeerOnline ? UserStatus.online : UserStatus.offline;
   }
 
@@ -301,7 +310,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             return;
           }
 
-          final chatState = context.read<ChatController>();
+          final chatState = context.read<ActiveChatController>();
           final messages = await chatState.getLocalMessagesForChat(
             widget.chatUserId,
           );
@@ -319,7 +328,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final chatState = context.watch<ChatController>();
+    final chatState = context.watch<ActiveChatController>();
+    final groupDetailsState = context.watch<GroupDetailsController>();
     final isSelectionMode = _selectedIndices.isNotEmpty;
     final theme = Theme.of(context);
 
@@ -572,7 +582,6 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                             final String cleanSenderId = msg.senderId
                                 .trim()
                                 .toLowerCase();
-                            widget.chatUserId.trim().toLowerCase();
 
                             final bool isMe =
                                 cleanSenderId == 'me' ||
@@ -585,7 +594,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                 .trim()
                                 .toLowerCase();
                             final String? displayName = widget.isGroup
-                                ? (chatState.groupMemberNames[senderId] ??
+                                ? (groupDetailsState
+                                          .groupMemberNames[senderId] ??
                                       'Unknown')
                                 : null;
 
@@ -729,8 +739,10 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                             } else if (widget.isGroup) {
                               sender =
                                   context
-                                      .read<ChatController>()
-                                      .groupMemberNames[msg.senderId] ??
+                                      .read<GroupDetailsController>()
+                                      .groupMemberNames[msg.senderId
+                                      .trim()
+                                      .toLowerCase()] ??
                                   'Someone';
                             } else {
                               sender = widget.displayName;
@@ -888,7 +900,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     ChatInputArea(
                       onSendMessage: _sendMessage,
                       onTypingChanged: (isTyping) => context
-                          .read<ChatController>()
+                          .read<ActiveChatController>()
                           .sendTypingNotification(isTyping),
                     ),
                   ],
