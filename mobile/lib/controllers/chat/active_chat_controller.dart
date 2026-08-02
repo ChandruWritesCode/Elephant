@@ -216,7 +216,8 @@ class ActiveChatController extends ChangeNotifier {
         if (!hasChanges && activeChat.isNotEmpty && mergedMessages.isNotEmpty) {
           hasChanges =
               activeChat.last.id != mergedMessages.last.id ||
-              activeChat.first.id != mergedMessages.first.id;
+              activeChat.first.id != mergedMessages.first.id ||
+              activeChat.any((m) => m.syncStatus == 'pending');
         }
 
         if (hasChanges) {
@@ -246,7 +247,6 @@ class ActiveChatController extends ChangeNotifier {
     final clientMessageId = _uuid.v4();
 
     QuotedMessage? quoted;
-
     if (replyingTo != null) {
       quoted = QuotedMessage(
         id: replyingTo.id,
@@ -311,6 +311,11 @@ class ActiveChatController extends ChangeNotifier {
               content: cleanContent,
               replyToMessageId: replyingTo?.id,
             );
+
+      if (_ws.isConnected) {
+        markMessageAsSynced(clientMessageId);
+      }
+
     } catch (e) {
       debugPrint("Immediate send failed, message queued: $e");
     }
@@ -360,8 +365,7 @@ class ActiveChatController extends ChangeNotifier {
         'messages',
         where: 'chat_id = ? COLLATE NOCASE',
         whereArgs: [chatId],
-        orderBy:
-            'created_at ASC',
+        orderBy: 'created_at ASC',
       );
 
       return maps.map((map) => Message.fromJson(map)).toList();
@@ -375,7 +379,10 @@ class ActiveChatController extends ChangeNotifier {
     final index = activeChat.indexWhere((m) => m.id == messageId);
     if (index != -1) {
       final existingMsg = activeChat[index];
-      activeChat[index] = Message(
+
+      final newList = List<Message>.from(activeChat);
+
+      newList[index] = Message(
         id: existingMsg.id,
         senderId: existingMsg.senderId,
         receiverId: existingMsg.receiverId,
@@ -386,6 +393,8 @@ class ActiveChatController extends ChangeNotifier {
         quotedMessage: existingMsg.quotedMessage,
         syncStatus: 'synced',
       );
+
+      activeChat = newList;
       notifyListeners();
 
       try {
@@ -417,7 +426,9 @@ class ActiveChatController extends ChangeNotifier {
                 newMsg.receiverId == currentChatUserId));
 
     if (belongsToCurrentChat) {
-      if (!activeChat.any((m) => m.id == newMsg.id)) {
+      final existingIndex = activeChat.indexWhere((m) => m.id == newMsg.id);
+
+      if (existingIndex == -1) {
         activeChat = [...activeChat, newMsg];
         notifyListeners();
 
@@ -425,6 +436,10 @@ class ActiveChatController extends ChangeNotifier {
           receiverId: isCurrentChatGroup ? null : currentChatUserId,
           groupId: isCurrentChatGroup ? currentChatUserId : null,
         );
+      } else {
+        if (activeChat[existingIndex].syncStatus == 'pending') {
+          markMessageAsSynced(newMsg.id);
+        }
       }
     }
   }

@@ -7,7 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:mobile/controllers/auth_state.dart';
 import 'package:mobile/controllers/chat/active_chat_controller.dart';
 import 'package:mobile/controllers/chat/group_details_controller.dart';
+import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/pages/chat/chat_details_page.dart';
+import 'package:mobile/services/ws_service.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile/widgets/chat_page_widgets.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -45,6 +47,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   dynamic _replyingToMessage;
   late ActiveChatController _chatController;
   late AuthState _authState;
+
+  Timer? _typingDebounce;
+  bool _isCurrentlyTyping = false;
 
   Timer? _highlightTimer;
 
@@ -91,6 +96,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     });
 
     _highlightTimer?.cancel();
+    _typingDebounce?.cancel();
 
     super.dispose();
   }
@@ -102,6 +108,26 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _scrollToBottom(animated: true);
+        }
+      });
+    }
+  }
+
+  void _handleTypingChange(String text) {
+    if (text.isNotEmpty && !_isCurrentlyTyping) {
+      _isCurrentlyTyping = true;
+      context.read<ActiveChatController>().sendTypingNotification(true);
+    } else if (text.isEmpty && _isCurrentlyTyping) {
+      _isCurrentlyTyping = false;
+      context.read<ActiveChatController>().sendTypingNotification(false);
+    }
+
+    _typingDebounce?.cancel();
+    if (text.isNotEmpty) {
+      _typingDebounce = Timer(const Duration(seconds: 2), () {
+        if (mounted && _isCurrentlyTyping) {
+          _isCurrentlyTyping = false;
+          context.read<ActiveChatController>().sendTypingNotification(false);
         }
       });
     }
@@ -204,6 +230,17 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
       replyingTo: _replyingToMessage,
       replyingToName: replyName,
       senderId: _authState.currentUser!.displayName,
+    );
+
+    final bool isConnected = WebSocketService().isConnected;
+    context.read<InboxController>().updateLocalInboxState(
+      widget.chatUserId,
+      text.trim(),
+      DateTime.now(),
+      false,
+      senderId: 'me',
+      syncStatus: isConnected ? 'synced' : 'pending',
+      isRead: false,
     );
 
     setState(() {
@@ -899,9 +936,34 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     ),
                     ChatInputArea(
                       onSendMessage: _sendMessage,
-                      onTypingChanged: (isTyping) => context
-                          .read<ActiveChatController>()
-                          .sendTypingNotification(isTyping),
+                      onTypingChanged: (isTyping) {
+                        if (isTyping && !_isCurrentlyTyping) {
+                          _isCurrentlyTyping = true;
+                          context
+                              .read<ActiveChatController>()
+                              .sendTypingNotification(true);
+                        }
+
+                        _typingDebounce?.cancel();
+                        if (isTyping) {
+                          _typingDebounce = Timer(
+                            const Duration(seconds: 2),
+                            () {
+                              if (mounted && _isCurrentlyTyping) {
+                                _isCurrentlyTyping = false;
+                                context
+                                    .read<ActiveChatController>()
+                                    .sendTypingNotification(false);
+                              }
+                            },
+                          );
+                        } else if (!isTyping && _isCurrentlyTyping) {
+                          _isCurrentlyTyping = false;
+                          context
+                              .read<ActiveChatController>()
+                              .sendTypingNotification(false);
+                        }
+                      },
                     ),
                   ],
                 ),

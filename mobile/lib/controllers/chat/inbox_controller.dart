@@ -204,7 +204,8 @@ class InboxController extends ChangeNotifier {
       if (old.id != current.id ||
           old.lastMessage != current.lastMessage ||
           old.timestamp != current.timestamp ||
-          old.unreadCount != current.unreadCount) {
+          old.unreadCount != current.unreadCount ||
+          old.lastMessageSyncStatus != current.lastMessageSyncStatus) {
         return true;
       }
     }

@@ -54,11 +54,23 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate = DateTime.now();
-    if (json['created_at'] != null) {
-      if (json['created_at'] is int) {
-        parsedDate = DateTime.fromMillisecondsSinceEpoch(json['created_at']);
+    
+    var dateData = json['created_at'] ?? json['timestamp']; 
+
+    if (dateData != null) {
+      if (dateData is int) {
+        parsedDate = DateTime.fromMillisecondsSinceEpoch(dateData);
       } else {
-        parsedDate = DateTime.parse(json['created_at'].toString()).toLocal();
+        String dateString = dateData.toString();
+        if (dateString.startsWith('0001-01-01')) {
+          parsedDate = DateTime.now(); 
+        } else {
+          try {
+            parsedDate = DateTime.parse(dateString).toLocal();
+          } catch (e) {
+            parsedDate = DateTime.now();
+          }
+        }
       }
     }
 
