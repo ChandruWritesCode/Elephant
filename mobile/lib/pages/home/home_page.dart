@@ -1,7 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/controllers/chat/chat_connection_controller.dart';
+import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/pages/settings/settings_page.dart';
 import 'package:mobile/services/auth_service.dart';
 import 'package:mobile/widgets/home_page_widgets.dart';
@@ -43,15 +44,16 @@ class _HomePageState extends State<HomePage> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final chatController = context.read<ChatController>();
+      final connectionController = context.read<ChatConnectionController>();
+      final inboxContoller = context.read<InboxController>();
 
       final token = await AuthService().getToken();
 
       if (!mounted) return;
 
       if (token != null) {
-        await chatController.initSession();
-        chatController.loadInbox();
+        await connectionController.connectWebSocket();
+        inboxContoller.loadInbox();
       }
     });
   }
@@ -232,13 +234,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget buildHomeTab(ChatController chatState) {
+  Widget buildHomeTab(
+    InboxController inboxState,
+    ChatConnectionController connectionState,
+  ) {
     final theme = Theme.of(context);
-    final isOffline = chatState.isOffline;
+    final isOffline = connectionState.isOffline;
 
     return RefreshIndicator(
       color: theme.colorScheme.primary,
-      onRefresh: _isSelectionMode ? () async {} : () => chatState.loadInbox(),
+      onRefresh: _isSelectionMode ? () async {} : () => inboxState.loadInbox(),
       child: CustomScrollView(
         controller: _scrollController,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -395,7 +400,7 @@ class _HomePageState extends State<HomePage> {
                           switch (value) {
                             case 'Select all':
                               setState(() {
-                                for (final thread in chatState.inbox) {
+                                for (final thread in inboxState.inbox) {
                                   _selectedChatIds.add(thread.id);
                                 }
                               });
@@ -437,7 +442,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-          chatState.inbox.isEmpty
+          inboxState.inbox.isEmpty
               ? SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
@@ -450,9 +455,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                 )
               : SliverList.builder(
-                  itemCount: chatState.inbox.length,
+                  itemCount: inboxState.inbox.length,
                   itemBuilder: (context, index) {
-                    final thread = chatState.inbox[index];
+                    final thread = inboxState.inbox[index];
 
                     final bool isSelected = _selectedChatIds.contains(
                       thread.id,
@@ -489,7 +494,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final chatState = context.watch<ChatController>();
+    final inboxState = context.watch<InboxController>();
+    final connectionState = context.watch<ChatConnectionController>();
     final theme = Theme.of(context);
     return PopScope(
       canPop: _selectedChatIds.isEmpty,
@@ -515,7 +521,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            buildHomeTab(chatState),
+            buildHomeTab(inboxState, connectionState),
             Center(
               child: Text(
                 "No recent calls",

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/auth_state.dart';
-import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/controllers/chat/group_details_controller.dart';
 import 'package:provider/provider.dart';
 import '../models/inbox_item.dart';
 import '../pages/chat/chat_page.dart';
@@ -37,11 +37,22 @@ class CustomChatCard extends StatelessWidget {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     final String timeLabel = _formatTimestamp(conversation.timestamp);
     final bool hasUnread = conversation.unreadCount > 0;
-    final chatState = context.watch<ChatController>();
+
+    final groupDetailsState = context.watch<GroupDetailsController>();
+
+    if (conversation.isGroup &&
+        !groupDetailsState.hasFetchedGroup(conversation.id)) {
+      Future.microtask(() {
+        if (context.mounted) {
+          context.read<GroupDetailsController>().preloadGroupMembers(
+            conversation.id,
+          );
+        }
+      });
+    }
 
     final currentUserId = context.read<AuthState>().currentUser?.id;
 
@@ -59,7 +70,8 @@ class CustomChatCard extends StatelessWidget {
         senderName = "You";
       } else {
         senderName =
-            chatState.userCache[conversation.lastMessageSender!] ?? "Member";
+            groupDetailsState.userCache[conversation.lastMessageSender!] ??
+            "Member";
       }
     }
 

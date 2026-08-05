@@ -21,9 +21,7 @@ class DatabaseHelper {
     String? key = await _secureStorage.read(key: keyName);
 
     if (key == null) {
-      final secureKey = base64Url.encode(
-        List<int>.generate(32, (i) => i + 1),
-      );
+      final secureKey = base64Url.encode(List<int>.generate(32, (i) => i + 1));
       await _secureStorage.write(key: keyName, value: secureKey);
       key = secureKey;
     }

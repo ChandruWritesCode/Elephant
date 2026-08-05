@@ -3,7 +3,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:mobile/controllers/auth_state.dart';
-import 'package:mobile/controllers/chat_controller.dart';
+import 'package:mobile/controllers/chat/chat_search_controller.dart';
+import 'package:mobile/controllers/chat/group_details_controller.dart';
+import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/pages/chat/chat_page.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
 import 'package:provider/provider.dart';
@@ -58,14 +60,14 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
     super.initState();
     if (widget.isGroup) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<ChatController>().fetchGroupMembers(widget.chatId);
+        context.read<GroupDetailsController>().fetchGroupMembers(widget.chatId);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final chatController = context.watch<ChatController>();
+    final groupDetailsState = context.watch<GroupDetailsController>();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -83,7 +85,7 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
               const SizedBox(height: 10),
 
               if (widget.isGroup)
-                _buildGroupMembersSection(chatController)
+                _buildGroupMembersSection(groupDetailsState)
               else
                 _buildOneOnOneDetails(),
 
@@ -140,9 +142,7 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [Text('0'), Icon(Icons.chevron_right)],
         ),
-        onTap: () {
-          // TODO: Navigate to Media Page (API calls later)
-        },
+        onTap: () {},
       ),
     );
   }
@@ -199,9 +199,9 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
     );
   }
 
-  Widget _buildGroupMembersSection(ChatController chatController) {
-    final members = chatController.currentGroupMembers;
-    final isLoading = chatController.isLoadingDetails;
+  Widget _buildGroupMembersSection(GroupDetailsController groupState) {
+    final members = groupState.currentGroupMembers;
+    final isLoading = groupState.isLoadingDetails;
 
     final currentUserId = context.read<AuthState>().currentUser?.id;
     final currentUserMember = members
@@ -320,13 +320,6 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
                       );
                     },
                   ),
-                  // feels redundent to have a view profile option since we don't have a profile page yet
-                  // ListTile(
-                  //   title: Text('View Profile (@${member.username})'),
-                  //   onTap: () {
-                  //     Navigator.pop(context);
-                  //   },
-                  // ),
                   if (isCurrentUserAdmin &&
                       member.userId !=
                           context.read<AuthState>().currentUser?.id)
@@ -383,9 +376,9 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
                                 content: Text('${member.displayName} removed.'),
                               ),
                             );
-                            context.read<ChatController>().fetchGroupMembers(
-                              widget.chatId,
-                            );
+                            context
+                                .read<GroupDetailsController>()
+                                .fetchGroupMembers(widget.chatId);
                           } else if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -463,12 +456,12 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     super.dispose();
   }
 
-  void _onSearchChanged(String value, ChatController chatState) {
+  void _onSearchChanged(String value, ChatSearchController searchState) {
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       if (value.length >= 3) {
-        chatState.queryUsers(value);
+        searchState.queryUsers(value);
       }
     });
     setState(() {});
@@ -478,7 +471,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     FocusScope.of(context).unfocus();
 
     final groupCtrl = context.read<GroupController>();
-    final chatCtrl = context.read<ChatController>();
+    final groupDetailsCtrl = context.read<GroupDetailsController>();
 
     final success = await groupCtrl.addMemberToGroup(widget.chatId, userId);
 
@@ -486,7 +479,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$displayName added to the group!')),
       );
-      chatCtrl.fetchGroupMembers(widget.chatId);
+      groupDetailsCtrl.fetchGroupMembers(widget.chatId);
       Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(
@@ -497,14 +490,16 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final chatState = context.watch<ChatController>();
+    final groupDetailsState = context.watch<GroupDetailsController>();
+    final searchState = context.watch<ChatSearchController>();
+    final inboxState = context.watch<InboxController>();
     final groupState = context.watch<GroupController>();
 
     final String searchInput = _searchController.text.trim();
     final bool isSearching = searchInput.isNotEmpty;
     final bool hasValidQueryLength = searchInput.length >= 3;
 
-    final currentMemberIds = chatState.currentGroupMembers
+    final currentMemberIds = groupDetailsState.currentGroupMembers
         .map((m) => m.userId)
         .toSet();
 
@@ -529,7 +524,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (val) => _onSearchChanged(val, chatState),
+                    onChanged: (val) => _onSearchChanged(val, searchState),
                     decoration: InputDecoration(
                       hintText: "Search name or username",
                       prefixIcon: const Icon(Icons.search),
@@ -538,7 +533,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
-                                chatState.queryUsers("");
+                                searchState.queryUsers("");
                                 setState(() {});
                               },
                             )
@@ -565,11 +560,11 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                 Expanded(
                   child: isSearching
                       ? _buildSearchResults(
-                          chatState,
+                          searchState,
                           currentMemberIds,
                           hasValidQueryLength,
                         )
-                      : _buildRecentContacts(chatState, currentMemberIds),
+                      : _buildRecentContacts(inboxState, currentMemberIds),
                 ),
               ],
             ),
@@ -580,7 +575,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   }
 
   Widget _buildSearchResults(
-    ChatController chatState,
+    ChatSearchController searchState,
     Set<String> currentMemberIds,
     bool hasValidQueryLength,
   ) {
@@ -589,11 +584,11 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         child: Text("Type at least 3 characters to search..."),
       );
     }
-    if (chatState.isSearchLoading) {
+    if (searchState.isSearchLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final results = chatState.contactSearchResults
+    final results = searchState.contactSearchResults
         .where((user) => !currentMemberIds.contains(user['id']))
         .toList();
 
@@ -626,10 +621,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   }
 
   Widget _buildRecentContacts(
-    ChatController chatState,
+    InboxController inboxState,
     Set<String> currentMemberIds,
   ) {
-    final recents = chatState.inbox
+    final recents = inboxState.inbox
         .where(
           (thread) => !thread.isGroup && !currentMemberIds.contains(thread.id),
         )

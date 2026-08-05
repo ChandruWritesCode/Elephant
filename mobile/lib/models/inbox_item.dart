@@ -11,7 +11,7 @@ class InboxItem {
   final bool isRead;
   int unreadCount;
   String? lastMessageSender;
-  String? lastMessageSyncStatus; // 'pending' or 'synced'
+  String? lastMessageSyncStatus;
   bool? lastMessageIsRead;
 
   InboxItem({
