@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:mobile/controllers/chat/chat_connection_controller.dart';
@@ -7,6 +9,7 @@ import 'package:mobile/pages/settings/settings_page.dart';
 import 'package:mobile/services/auth_service.dart';
 import 'package:mobile/widgets/home_page_widgets.dart';
 import 'package:provider/provider.dart';
+
 import '../new chat/new_chat_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -27,10 +30,21 @@ class _HomePageState extends State<HomePage> {
 
   bool get _isSelectionMode => _selectedChatIds.isNotEmpty;
 
+  Timer? _searchDebounce;
+
   @override
   void initState() {
     super.initState();
     _isSearchOpen = false;
+
+    _searchController.addListener(() {
+      if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+    });
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {
@@ -80,6 +94,10 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _page = index;
         });
+        if (_isSearchOpen) {
+          _isSearchOpen = false;
+          _searchController.clear();
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
@@ -241,6 +259,13 @@ class _HomePageState extends State<HomePage> {
     final theme = Theme.of(context);
     final isOffline = connectionState.isOffline;
 
+    final searchQuery = _searchController.text.toLowerCase();
+    final filteredInbox = inboxState.inbox.where((thread) {
+      final title = thread.title.toLowerCase();
+      final username = thread.username?.toLowerCase() ?? '';
+      return title.contains(searchQuery) || username.contains(searchQuery);
+    }).toList();
+
     return RefreshIndicator(
       color: theme.colorScheme.primary,
       onRefresh: _isSelectionMode ? () async {} : () => inboxState.loadInbox(),
@@ -368,7 +393,10 @@ class _HomePageState extends State<HomePage> {
                       onPressed: () {
                         setState(() {
                           _isSearchOpen = !_isSearchOpen;
-                          if (!_isSearchOpen) _searchController.clear();
+                          if (!_isSearchOpen) {
+                            FocusScope.of(context).unfocus();
+                            _searchController.clear();
+                          }
                         });
                       },
                       icon: Icon(
@@ -442,12 +470,14 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-          inboxState.inbox.isEmpty
+          filteredInbox.isEmpty
               ? SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
                     child: Text(
-                      "No conversations yet",
+                      searchQuery.isNotEmpty
+                          ? "Nenhuma conversa encontrada"
+                          : "No conversations yet",
                       style: TextStyle(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -455,9 +485,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                 )
               : SliverList.builder(
-                  itemCount: inboxState.inbox.length,
+                  itemCount: filteredInbox.length,
                   itemBuilder: (context, index) {
-                    final thread = inboxState.inbox[index];
+                    final thread = filteredInbox[index];
 
                     final bool isSelected = _selectedChatIds.contains(
                       thread.id,
