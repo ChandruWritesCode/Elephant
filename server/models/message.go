@@ -2,7 +2,6 @@ package models
 
 import "time"
 
-// QuotedMessage represents a lightweight snapshot of the parent message being replied to
 type QuotedMessage struct {
 	ID       string `json:"id"`
 	SenderID string `json:"sender_id"`
@@ -17,6 +16,7 @@ type Message struct {
 	Content          string         `json:"content"`
 	CreatedAt        time.Time      `json:"created_at"`
 	IsRead           bool           `json:"is_read"`
+	EditedAt         *time.Time     `json:"edited_at,omitempty"`
 	ReplyToMessageID *string        `json:"reply_to_message_id,omitempty"`
 	QuotedMessage    *QuotedMessage `json:"quoted_message,omitempty"`
 }

@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/commandlinecoding/elephant/server/middlewares"
 	"github.com/commandlinecoding/elephant/server/models"
 	"github.com/commandlinecoding/elephant/server/repository"
 	"github.com/commandlinecoding/elephant/server/services"
+	"github.com/go-chi/chi/v5"
 )
 
 type SendMessageReq struct {
@@ -72,7 +74,7 @@ func HandleGetChatHistory(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
-	before := time.Now()
+	before := time.Now().Add(time.Minute)
 	if beforeStr != "" {
 		if t, err := time.Parse(time.RFC3339, beforeStr); err == nil {
 			before = t
@@ -141,4 +143,74 @@ func HandleMarkRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: "Target messages marked read successfully"})
+}
+
+type EditMessageReq struct {
+	Content string `json:"content"`
+}
+
+func HandleEditMessage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	uid, ok := r.Context().Value(middlewares.UserIDKey).(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Unauthorized context"})
+		return
+	}
+
+	msgID := chi.URLParam(r, "id")
+	if msgID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Message ID required"})
+		return
+	}
+
+	var req EditMessageReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Invalid json payload structure"})
+		return
+	}
+
+	content := strings.TrimSpace(req.Content)
+	if content == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Content cannot be empty"})
+		return
+	}
+
+	repo := repository.NewMessageRepository()
+	msg, err := repo.GetMessageByID(r.Context(), msgID)
+	if err != nil {
+		if strings.Contains(err.Error(), "db error") {
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: err.Error()})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Message not found"})
+		return
+	}
+
+	if msg.SenderID != uid {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "You can only edit your own messages"})
+		return
+	}
+
+	if time.Since(msg.CreatedAt) > 15*time.Minute {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Message can no longer be edited (15 minute window expired)"})
+		return
+	}
+
+	updatedMsg, err := repo.UpdateMessage(r.Context(), msgID, content)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: false, Error: "Failed to update message"})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(models.JSONResponse{Success: true, Data: updatedMsg})
 }

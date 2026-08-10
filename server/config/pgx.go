@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"strings"
 	"time"
 
@@ -13,14 +14,29 @@ import (
 
 var DB *pgxpool.Pool
 
-func isLocalHost(host string) bool {
-	h := strings.ToLower(host)
-	return h == "localhost" || h == "127.0.0.1" || h == "::1" || strings.HasPrefix(h, "172.")
+func isPrivateOrLocal(host string) bool {
+	h := strings.ToLower(strings.TrimSpace(host))
+
+	// Local hostnames and Docker container service names
+	if h == "localhost" || h == "postgres" || h == "db" || h == "host.docker.internal" {
+		return true
+	}
+
+	// Parse IP and check RFC 1918 private ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) and Loopbacks
+	ip := net.ParseIP(h)
+	if ip != nil {
+		return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified()
+	}
+
+	// Fallback string prefix checks
+	return strings.HasPrefix(h, "10.") ||
+		strings.HasPrefix(h, "192.168.") ||
+		strings.HasPrefix(h, "127.")
 }
 
 func InitDatabase() {
 	sslMode := "require"
-	if isLocalHost(env.POSTGRES_HOST) {
+	if isPrivateOrLocal(env.POSTGRES_HOST) {
 		sslMode = "disable"
 	}
 

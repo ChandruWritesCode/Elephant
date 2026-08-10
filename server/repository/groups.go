@@ -106,7 +106,7 @@ func (r *GroupRepository) GetGroupMembers(ctx context.Context, groupID string) (
 func (r *GroupRepository) GetGroupMessages(ctx context.Context, groupID string, before time.Time, limit int) ([]models.Message, error) {
 	query := `
 		SELECT 
-			m.id, m.sender_id, m.content, m.created_at, m.reply_to_message_id,
+			m.id, m.sender_id, m.content, m.created_at, m.edited_at, m.reply_to_message_id,
 			q.sender_id AS quoted_sender_id, q.content AS quoted_content
 		FROM messages m
 		LEFT JOIN messages q ON m.reply_to_message_id = q.id
@@ -125,7 +125,7 @@ func (r *GroupRepository) GetGroupMessages(ctx context.Context, groupID string, 
 		var m models.Message
 		var qSender, qContent *string
 
-		err := rows.Scan(&m.ID, &m.SenderID, &m.Content, &m.CreatedAt, &m.ReplyToMessageID, &qSender, &qContent)
+		err := rows.Scan(&m.ID, &m.SenderID, &m.Content, &m.CreatedAt, &m.EditedAt, &m.ReplyToMessageID, &qSender, &qContent)
 		if err != nil {
 			return nil, err
 		}
