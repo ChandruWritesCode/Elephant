@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/commandlinecoding/elephant/server/config"
 	"github.com/commandlinecoding/elephant/server/models"
+	"github.com/jackc/pgx/v5"
 )
 
 type MessageRepository struct{}
@@ -38,7 +41,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, senderID, receive
 func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB string, before time.Time, limit int) ([]models.Message, error) {
 	query := `
 		SELECT 
-			m.id, m.sender_id, m.receiver_id, m.content, m.created_at, m.is_read, m.reply_to_message_id,
+			m.id, m.sender_id, m.receiver_id, m.content, m.created_at, m.is_read, m.edited_at, m.reply_to_message_id,
 			q.sender_id AS quoted_sender_id, q.content AS quoted_content
 		FROM messages m
 		LEFT JOIN messages q ON m.reply_to_message_id = q.id
@@ -58,7 +61,7 @@ func (r *MessageRepository) GetChatHistory(ctx context.Context, userA, userB str
 		var m models.Message
 		var qSender, qContent *string
 
-		err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.CreatedAt, &m.IsRead, &m.ReplyToMessageID, &qSender, &qContent)
+		err := rows.Scan(&m.ID, &m.SenderID, &m.ReceiverID, &m.Content, &m.CreatedAt, &m.IsRead, &m.EditedAt, &m.ReplyToMessageID, &qSender, &qContent)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +91,6 @@ func (r *MessageRepository) GetMessagePreview(ctx context.Context, messageID str
 func (r *MessageRepository) GetConversations(ctx context.Context, userID string) ([]models.Conversation, error) {
 	query := `
 		WITH raw_conversations AS (
-			-- Enclosing Part A inside explicit parentheses to isolate its internal ORDER BY
 			(SELECT DISTINCT ON (CASE WHEN sender_id = $1::uuid THEN receiver_id ELSE sender_id END)
 				CASE WHEN sender_id = $1::uuid THEN receiver_id ELSE sender_id END AS chat_user_id,
 				'direct' AS type,
@@ -103,7 +105,6 @@ func (r *MessageRepository) GetConversations(ctx context.Context, userID string)
 
 			UNION ALL
 
-			-- Enclosing Part B inside explicit parentheses to isolate its internal ORDER BY
 			(SELECT DISTINCT ON (m.group_id)
 				NULL::UUID AS chat_user_id,
 				'group' AS type,
@@ -204,4 +205,56 @@ func (r *MessageRepository) UpdateGroupLastRead(ctx context.Context, groupID, us
 	`
 	_, err := config.DB.Exec(ctx, query, groupID, userID)
 	return err
+}
+
+func (r *MessageRepository) GetMessageByID(ctx context.Context, id string) (*models.Message, error) {
+	query := `
+		SELECT id, sender_id, COALESCE(receiver_id::text, '') as receiver_id, COALESCE(group_id::text, '') as group_id, 
+		       content, created_at, edited_at, reply_to_message_id
+		FROM messages 
+		WHERE id = $1::uuid;
+	`
+	var msg models.Message
+	err := config.DB.QueryRow(ctx, query, id).Scan(
+		&msg.ID,
+		&msg.SenderID,
+		&msg.ReceiverID,
+		&msg.GroupID,
+		&msg.Content,
+		&msg.CreatedAt,
+		&msg.EditedAt,
+		&msg.ReplyToMessageID,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("db error: %w", err)
+	}
+	return &msg, nil
+}
+
+func (r *MessageRepository) UpdateMessage(ctx context.Context, id, content string) (*models.Message, error) {
+	query := `
+		UPDATE messages 
+		SET content = $1, edited_at = NOW() 
+		WHERE id = $2::uuid 
+		RETURNING id, sender_id, COALESCE(receiver_id::text, '') as receiver_id, COALESCE(group_id::text, '') as group_id, 
+		          content, created_at, edited_at, reply_to_message_id;
+	`
+	var msg models.Message
+	err := config.DB.QueryRow(ctx, query, content, id).Scan(
+		&msg.ID,
+		&msg.SenderID,
+		&msg.ReceiverID,
+		&msg.GroupID,
+		&msg.Content,
+		&msg.CreatedAt,
+		&msg.EditedAt,
+		&msg.ReplyToMessageID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
 }
