@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:mobile/services/signal_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
 import 'package:mobile/models/user.dart';
@@ -67,13 +68,12 @@ class AuthState extends ChangeNotifier {
       final userData = data['data'] ?? data['user'] ?? data;
 
       _currentUser = UserModel.fromJson(userData);
-      
+
       await _authService.saveUserProfile(jsonEncode(userData));
       notifyListeners();
-      
     } catch (e) {
       debugPrint("Network failed, attempting to load cached user profile: $e");
-      
+
       try {
         final cachedData = await _authService.getCachedUserProfile();
         if (cachedData != null) {
@@ -81,8 +81,8 @@ class AuthState extends ChangeNotifier {
           _currentUser = UserModel.fromJson(decodedData);
           notifyListeners();
         } else {
-           _errorMessage = "No internet connection and no cached profile.";
-           notifyListeners();
+          _errorMessage = "No internet connection and no cached profile.";
+          notifyListeners();
         }
       } catch (cacheError) {
         debugPrint("Cache read failed: $cacheError");
@@ -95,6 +95,9 @@ class AuthState extends ChangeNotifier {
 
     if (_token != null) {
       await loadUserProfile();
+      if (_currentUser != null) {
+        await SignalService().initializeAndUploadKeys(_currentUser!.id);
+      }
     }
 
     notifyListeners();
@@ -128,6 +131,10 @@ class AuthState extends ChangeNotifier {
           );
 
           await loadUserProfile();
+
+          if (_currentUser != null) {
+            await SignalService().initializeAndUploadKeys(_currentUser!.id);
+          }
 
           _isLoading = false;
           notifyListeners();
@@ -178,6 +185,10 @@ class AuthState extends ChangeNotifier {
           );
 
           await loadUserProfile();
+
+          if (_currentUser != null) {
+            await SignalService().initializeAndUploadKeys(_currentUser!.id);
+          }
 
           _isLoading = false;
           notifyListeners();
@@ -236,6 +247,10 @@ class AuthState extends ChangeNotifier {
         _token = accessToken;
         await _authService.saveTokens(accessToken, refreshToken ?? accessToken);
         await loadUserProfile();
+
+        if (_currentUser != null) {
+          await SignalService().initializeAndUploadKeys(_currentUser!.id);
+        }
 
         _isLoading = false;
         notifyListeners();

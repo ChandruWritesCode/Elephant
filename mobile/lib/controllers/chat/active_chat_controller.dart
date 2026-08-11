@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:mobile/services/signal_service.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/message.dart';
@@ -81,12 +83,17 @@ class ActiveChatController extends ChangeNotifier {
     // 2. Fetch Network History
     try {
       final res = await _api.getChatHistory(targetUid, isGroup: isGroup);
+      
       if (currentChatUserId != targetUid) return;
 
       final targetList = _extractDataList(res.data, ['messages']);
-      final loadedMessages = targetList.reversed
-          .map((json) => Message.fromJson(json))
-          .toList();
+      
+      List<Message> loadedMessages = [];
+      for (var json in targetList.reversed) {
+        Message parsedMsg = Message.fromJson(json);
+        Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
+        loadedMessages.add(decryptedMsg);
+      }
 
       if (currentChatUserId != targetUid) return;
 
@@ -148,9 +155,13 @@ class ActiveChatController extends ChangeNotifier {
       if (currentChatUserId != targetUid) return;
 
       final targetList = _extractDataList(res.data, ['messages']);
-      final loadedMessages = targetList.reversed
-          .map((json) => Message.fromJson(json))
-          .toList();
+      
+      List<Message> loadedMessages = [];
+      for (var json in targetList.reversed) {
+        Message parsedMsg = Message.fromJson(json);
+        Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
+        loadedMessages.add(decryptedMsg);
+      }
 
       if (currentChatUserId != targetUid) return;
 
@@ -283,11 +294,22 @@ class ActiveChatController extends ChangeNotifier {
         'sync_status': 'pending',
       });
 
+      await SignalService().establishSessionIfNeeded(targetId);
+      final encryptedData = await SignalService().encryptMessage(
+        targetId,
+        cleanContent,
+      );
+
+      final String securePayload = jsonEncode({
+        'type': encryptedData['type'],
+        'ciphertext': encryptedData['ciphertext'],
+      });
+
       final payload = {
         'messageId': clientMessageId,
         'receiverId': isCurrentChatGroup ? null : targetId,
         'groupId': isCurrentChatGroup ? targetId : null,
-        'content': cleanContent,
+        'content': securePayload,
         'replyToMessageId': replyingTo?.id,
       };
 
@@ -301,21 +323,20 @@ class ActiveChatController extends ChangeNotifier {
           ? _ws.sendGroupChat(
               messageId: clientMessageId,
               groupId: targetId,
-              content: cleanContent,
+              content: securePayload,
               senderId: senderId,
               replyToMessageId: replyingTo?.id,
             )
           : _ws.sendChat(
               messageId: clientMessageId,
               receiverId: targetId,
-              content: cleanContent,
+              content: securePayload,
               replyToMessageId: replyingTo?.id,
             );
 
       if (_ws.isConnected) {
         markMessageAsSynced(clientMessageId);
       }
-
     } catch (e) {
       debugPrint("Immediate send failed, message queued: $e");
     }
@@ -442,5 +463,29 @@ class ActiveChatController extends ChangeNotifier {
         }
       }
     }
+  }
+
+  Future<Message> _decryptMessageIfNeeded(Message msg) async {
+    final content = msg.content.trim();
+    if (content.startsWith('{') && content.contains('ciphertext')) {
+      
+      if (msg.senderId != 'me') { 
+        try {
+          final Map<String, dynamic> payload = jsonDecode(content);
+          final decryptedText = await SignalService().decryptMessage(
+            msg.senderId,
+            payload['ciphertext'],
+            payload['type'],
+          );
+          return msg.copyWith(content: decryptedText);
+        } catch (e) {
+          debugPrint("Failed to decrypt history message: $e");
+          return msg.copyWith(content: "🔒 [Encrypted Message]");
+        }
+      } else {
+        return msg.copyWith(content: "🔒 [Sent on another device]");
+      }
+    }
+    return msg; 
   }
 }

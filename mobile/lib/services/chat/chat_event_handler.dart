@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:mobile/services/signal_service.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'package:mobile/controllers/chat/active_chat_controller.dart';
 import 'package:mobile/controllers/chat/inbox_controller.dart';
@@ -35,11 +38,17 @@ class ChatEventHandler {
             .toLowerCase();
         isCurrentChat = (eventGroupId == cleanCurrentChat);
       } else {
-        final String? eventSenderId = data['sender_id']?.toString().trim().toLowerCase() ?? 
-                                      data['sender']?.toString().trim().toLowerCase();
-        final String? eventReceiverId = data['receiver_id']?.toString().trim().toLowerCase();
-        
-        isCurrentChat = (eventSenderId == cleanCurrentChat || eventReceiverId == cleanCurrentChat);
+        final String? eventSenderId =
+            data['sender_id']?.toString().trim().toLowerCase() ??
+            data['sender']?.toString().trim().toLowerCase();
+        final String? eventReceiverId = data['receiver_id']
+            ?.toString()
+            .trim()
+            .toLowerCase();
+
+        isCurrentChat =
+            (eventSenderId == cleanCurrentChat ||
+            eventReceiverId == cleanCurrentChat);
       }
     }
 
@@ -61,20 +70,48 @@ class ChatEventHandler {
       case 'chat':
       case 'message':
         final String? incomingId = data['id']?.toString();
-        final String echoId = data['message_id']?.toString() ??
+        final String echoId =
+            data['message_id']?.toString() ??
             data['messageId']?.toString() ??
             data['client_message_id']?.toString() ??
             incomingId ??
             '';
 
-        final String cleanSenderId = (data['sender_id'] ?? data['sender'] ?? '').toString().trim().toLowerCase();
-        final String cleanReceiverId = (data['receiver_id'] ?? '').toString().trim().toLowerCase();
+        final String cleanSenderId = (data['sender_id'] ?? data['sender'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        final String cleanReceiverId = (data['receiver_id'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         final String myId = currentUserId.trim().toLowerCase();
         final bool isMe = (cleanSenderId == 'me' || cleanSenderId == myId);
 
         final String dbChatId = data['group_id'] != null
             ? data['group_id'].toString()
             : (isMe ? cleanReceiverId : cleanSenderId);
+
+        try {
+          final String rawContent = data['content']?.toString() ?? '';
+          if (rawContent.startsWith('{') && rawContent.contains('ciphertext')) {
+            final Map<String, dynamic> payload = jsonDecode(rawContent);
+            final String remoteSender = data['sender_id']?.toString() ?? '';
+
+            final decryptedText = await SignalService().decryptMessage(
+              remoteSender,
+              payload['ciphertext'],
+              payload['type'],
+            );
+            data['content'] =
+                decryptedText;
+          }
+        } catch (e) {
+          debugPrint(
+            "❌ Decryption failed for message. It may be out of sync: $e",
+          );
+          data['content'] = "🔒 [Message Decryption Failed]";
+        }
 
         try {
           final db = await DatabaseHelper.instance.database;
@@ -88,7 +125,7 @@ class ChatEventHandler {
 
           if (isOurMessage) {
             final String newMsgId = incomingId ?? echoId;
-            
+
             int index = activeChatController.activeChat.indexWhere(
               (m) => m.id == echoId || m.id == newMsgId,
             );
@@ -107,7 +144,9 @@ class ChatEventHandler {
             if (index != -1) {
               final existingMsg = activeChatController.activeChat[index];
 
-              final newList = List<Message>.from(activeChatController.activeChat);
+              final newList = List<Message>.from(
+                activeChatController.activeChat,
+              );
               newList[index] = Message(
                 id: newMsgId,
                 senderId: existingMsg.senderId,
@@ -123,11 +162,19 @@ class ChatEventHandler {
               activeChatController.activeChat = newList;
               activeChatController.refreshUI();
 
-              await db.delete('action_queue', where: 'id = ?', whereArgs: [originalClientId]);
+              await db.delete(
+                'action_queue',
+                where: 'id = ?',
+                whereArgs: [originalClientId],
+              );
               if (originalClientId != newMsgId) {
-                await db.delete('messages', where: 'id = ?', whereArgs: [originalClientId]);
+                await db.delete(
+                  'messages',
+                  where: 'id = ?',
+                  whereArgs: [originalClientId],
+                );
               }
-              
+
               await db.insert('messages', {
                 'id': newMsgId,
                 'chat_id': dbChatId,
@@ -173,7 +220,9 @@ class ChatEventHandler {
           }, conflictAlgorithm: ConflictAlgorithm.replace);
 
           if (isCurrentChat) {
-            if (!activeChatController.activeChat.any((msg) => msg.id == incomingMsg.id)) {
+            if (!activeChatController.activeChat.any(
+              (msg) => msg.id == incomingMsg.id,
+            )) {
               activeChatController.activeChat = [
                 ...activeChatController.activeChat,
                 incomingMsg,
@@ -199,7 +248,6 @@ class ChatEventHandler {
             syncStatus: 'synced',
             isRead: isCurrentChat,
           );
-
         } catch (e) {
           debugPrint("Failed to save incoming message to DB: $e");
         }
@@ -217,10 +265,17 @@ class ChatEventHandler {
         break;
 
       case 'read_receipt':
-        final String payloadSender = (data['sender_id'] ?? '').toString().toLowerCase();
-        final String payloadReceiver = (data['receiver_id'] ?? '').toString().toLowerCase();
-        final String payloadGroup = (data['group_id'] ?? '').toString().toLowerCase();
-        final String safeChatId = (activeChatController.currentChatUserId ?? '').toLowerCase();
+        final String payloadSender = (data['sender_id'] ?? '')
+            .toString()
+            .toLowerCase();
+        final String payloadReceiver = (data['receiver_id'] ?? '')
+            .toString()
+            .toLowerCase();
+        final String payloadGroup = (data['group_id'] ?? '')
+            .toString()
+            .toLowerCase();
+        final String safeChatId = (activeChatController.currentChatUserId ?? '')
+            .toLowerCase();
 
         bool isRelevantToThisChat = false;
         String dbTargetChatId = "";

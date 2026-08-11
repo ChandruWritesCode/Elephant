@@ -89,6 +89,42 @@ class DatabaseHelper {
         PRIMARY KEY (group_id, user_id)
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE signal_local_keys (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        registration_id INTEGER NOT NULL,
+        identity_key_pair TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE signal_identities (
+        address TEXT PRIMARY KEY,
+        identity_key TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE signal_sessions (
+        address TEXT PRIMARY KEY,
+        record TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE signal_prekeys (
+        key_id INTEGER PRIMARY KEY,
+        record TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE signal_signed_prekeys (
+        key_id INTEGER PRIMARY KEY,
+        record TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> insertMessage(Map<String, dynamic> messageData) async {
