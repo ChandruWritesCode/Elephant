@@ -48,6 +48,13 @@ class _HomePageState extends State<HomePage> {
 
     _scrollController = ScrollController();
     _scrollController.addListener(() {
+      final inboxController = context.read<InboxController>();
+      if (inboxController.inbox.isEmpty) {
+        if (!_isFabVisible) {
+          setState(() => _isFabVisible = true);
+        }
+        return;
+      }
       if (_scrollController.position.userScrollDirection ==
           ScrollDirection.reverse) {
         if (_isFabVisible) setState(() => _isFabVisible = false);
@@ -527,6 +534,7 @@ class _HomePageState extends State<HomePage> {
     final inboxState = context.watch<InboxController>();
     final connectionState = context.watch<ChatConnectionController>();
     final theme = Theme.of(context);
+    final bool showFab = inboxState.inbox.isEmpty || _isFabVisible;
     return PopScope(
       canPop: _selectedChatIds.isEmpty,
       onPopInvokedWithResult: (didPop, result) {
@@ -566,12 +574,12 @@ class _HomePageState extends State<HomePage> {
         floatingActionButton: _page == 1
             ? AnimatedSlide(
                 duration: const Duration(milliseconds: 300),
-                offset: (_isFabVisible && !_isSelectionMode)
+                offset: (showFab && !_isSelectionMode)
                     ? Offset.zero
                     : const Offset(0, 2),
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 300),
-                  opacity: (_isFabVisible && !_isSelectionMode) ? 1.0 : 0.0,
+                  opacity: (showFab && !_isSelectionMode) ? 1.0 : 0.0,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: SizedBox(
