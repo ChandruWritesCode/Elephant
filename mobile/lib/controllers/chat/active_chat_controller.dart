@@ -42,7 +42,6 @@ class ActiveChatController extends ChangeNotifier {
     isPeerOnline = false;
     notifyListeners();
 
-    // 1. Load Local DB Messages
     try {
       final db = await DatabaseHelper.instance.database;
       final localData = await db.query(
@@ -80,19 +79,41 @@ class ActiveChatController extends ChangeNotifier {
       debugPrint("Local cache read failed: $e");
     }
 
-    // 2. Fetch Network History
     try {
+      debugPrint("\n--- FETCHING NETWORK HISTORY ---");
       final res = await _api.getChatHistory(targetUid, isGroup: isGroup);
-      
+
       if (currentChatUserId != targetUid) return;
 
       final targetList = _extractDataList(res.data, ['messages']);
-      
+
+      final db = await DatabaseHelper.instance.database;
+      final localData = await db.query(
+        'messages',
+        where: 'chat_id = ?',
+        whereArgs: [targetUid],
+      );
+
+      final Map<String, String> localDecryptedContents = {};
+      for (var row in localData) {
+        final content = row['content'] as String;
+        if (!content.contains('ciphertext') && !content.contains('🔒')) {
+          localDecryptedContents[row['id'] as String] = content;
+        }
+      }
+
       List<Message> loadedMessages = [];
       for (var json in targetList.reversed) {
         Message parsedMsg = Message.fromJson(json);
-        Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
-        loadedMessages.add(decryptedMsg);
+
+        if (localDecryptedContents.containsKey(parsedMsg.id)) {
+          loadedMessages.add(
+            parsedMsg.copyWith(content: localDecryptedContents[parsedMsg.id]),
+          );
+        } else {
+          Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
+          loadedMessages.add(decryptedMsg);
+        }
       }
 
       if (currentChatUserId != targetUid) return;
@@ -115,6 +136,10 @@ class ActiveChatController extends ChangeNotifier {
         final db = await DatabaseHelper.instance.database;
         Batch batch = db.batch();
         for (var msg in loadedMessages) {
+          if (msg.content.contains('ciphertext') || msg.content.contains('🔒')) {
+            continue; 
+          }
+
           batch.insert('messages', {
             'id': msg.id,
             'chat_id': targetUid,
@@ -155,12 +180,34 @@ class ActiveChatController extends ChangeNotifier {
       if (currentChatUserId != targetUid) return;
 
       final targetList = _extractDataList(res.data, ['messages']);
-      
+
+      final db = await DatabaseHelper.instance.database;
+      final localData = await db.query(
+        'messages',
+        where: 'chat_id = ?',
+        whereArgs: [targetUid],
+      );
+
+      final Map<String, String> localDecryptedContents = {};
+      for (var row in localData) {
+        final content = row['content'] as String;
+        if (!content.contains('ciphertext') && !content.contains('🔒')) {
+          localDecryptedContents[row['id'] as String] = content;
+        }
+      }
+
       List<Message> loadedMessages = [];
       for (var json in targetList.reversed) {
         Message parsedMsg = Message.fromJson(json);
-        Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
-        loadedMessages.add(decryptedMsg);
+
+        if (localDecryptedContents.containsKey(parsedMsg.id)) {
+          loadedMessages.add(
+            parsedMsg.copyWith(content: localDecryptedContents[parsedMsg.id]),
+          );
+        } else {
+          Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
+          loadedMessages.add(decryptedMsg);
+        }
       }
 
       if (currentChatUserId != targetUid) return;
@@ -207,6 +254,10 @@ class ActiveChatController extends ChangeNotifier {
           final db = await DatabaseHelper.instance.database;
           Batch batch = db.batch();
           for (var msg in loadedMessages) {
+            if (msg.content.contains('ciphertext') || msg.content.contains('🔒')) {
+              continue; 
+            }
+
             batch.insert('messages', {
               'id': msg.id,
               'chat_id': targetUid,
@@ -255,6 +306,16 @@ class ActiveChatController extends ChangeNotifier {
     if (currentChatUserId == null || cleanContent.isEmpty) return;
 
     final targetId = currentChatUserId!;
+
+    final sessionReady = await SignalService().establishSessionIfNeeded(
+      targetId,
+    );
+
+    if (!sessionReady) {
+      debugPrint("Send aborted: Target user has no E2EE keys on server.");
+      return;
+    }
+
     final clientMessageId = _uuid.v4();
 
     QuotedMessage? quoted;
@@ -283,6 +344,8 @@ class ActiveChatController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint("\n=== SENDING NEW MESSAGE ===");
+      debugPrint("Saving locally. ID: $clientMessageId | Chat: $targetId | Text: $cleanContent");
       await DatabaseHelper.instance.insertMessage({
         'id': clientMessageId,
         'chat_id': targetId,
@@ -294,7 +357,6 @@ class ActiveChatController extends ChangeNotifier {
         'sync_status': 'pending',
       });
 
-      await SignalService().establishSessionIfNeeded(targetId);
       final encryptedData = await SignalService().encryptMessage(
         targetId,
         cleanContent,
@@ -437,8 +499,10 @@ class ActiveChatController extends ChangeNotifier {
     }
   }
 
-  void addRealTimeMessage(Message newMsg) {
+  void addRealTimeMessage(Message incomingMsg) async {
     if (currentChatUserId == null) return;
+
+    Message newMsg = await _decryptMessageIfNeeded(incomingMsg);
 
     bool belongsToCurrentChat =
         (isCurrentChatGroup && newMsg.receiverId == currentChatUserId) ||
@@ -452,6 +516,21 @@ class ActiveChatController extends ChangeNotifier {
       if (existingIndex == -1) {
         activeChat = [...activeChat, newMsg];
         notifyListeners();
+
+        try {
+          await DatabaseHelper.instance.insertMessage({
+            'id': newMsg.id,
+            'chat_id': currentChatUserId,
+            'sender_id': newMsg.senderId,
+            'content': newMsg.content,
+            'created_at': newMsg.createdAt.millisecondsSinceEpoch,
+            'is_read': newMsg.isRead ? 1 : 0,
+            'reply_to_id': newMsg.replyToMessageId,
+            'sync_status': 'synced',
+          });
+        } catch (e) {
+          debugPrint("Failed to save incoming WS message to DB: $e");
+        }
 
         _ws.sendReadReceipt(
           receiverId: isCurrentChatGroup ? null : currentChatUserId,
@@ -467,25 +546,111 @@ class ActiveChatController extends ChangeNotifier {
 
   Future<Message> _decryptMessageIfNeeded(Message msg) async {
     final content = msg.content.trim();
+
     if (content.startsWith('{') && content.contains('ciphertext')) {
+      debugPrint("\n=== DECRYPTION DEBUG START ===");
+      debugPrint("Msg ID from Server: ${msg.id}");
+      debugPrint("Msg Sender: ${msg.senderId}");
+      debugPrint("Msg Receiver: ${msg.receiverId}");
+      debugPrint("Msg CreatedAt: ${msg.createdAt} (${msg.createdAt.millisecondsSinceEpoch})");
       
-      if (msg.senderId != 'me') { 
+      bool isSelfChat = msg.senderId == msg.receiverId;
+      bool isSentByMe = isSelfChat || (!isCurrentChatGroup && msg.senderId != currentChatUserId) || msg.senderId == 'me';
+
+      debugPrint("isSelfChat: $isSelfChat | isSentByMe: $isSentByMe");
+
+      if (isSentByMe) {
         try {
-          final Map<String, dynamic> payload = jsonDecode(content);
-          final decryptedText = await SignalService().decryptMessage(
-            msg.senderId,
-            payload['ciphertext'],
-            payload['type'],
+          final db = await DatabaseHelper.instance.database;
+          
+          debugPrint("1. Attempting EXACT Match lookup in SQLite...");
+          final exactMatch = await db.query(
+            'messages',
+            where: 'id = ?',
+            whereArgs: [msg.id],
           );
-          return msg.copyWith(content: decryptedText);
+
+          if (exactMatch.isNotEmpty) {
+            final exactContent = exactMatch.first['content'].toString();
+            debugPrint(" -> Exact row found! Content preview: ${exactContent.length > 20 ? exactContent.substring(0, 20) + '...' : exactContent}");
+            if (!exactContent.contains('ciphertext') && !exactContent.contains('🔒')) {
+              debugPrint(" -> Perfect Match. Bypassing LibSignal.");
+              return msg.copyWith(content: exactContent);
+            } else {
+              debugPrint(" -> Row exists, but content is corrupted/locked. Falling back to Time-Proximity.");
+            }
+          } else {
+            debugPrint(" -> No Exact Match found for ID ${msg.id}. Server must have mutated it. Falling back to Time-Proximity.");
+          }
+
+          final targetChatId = currentChatUserId ?? msg.receiverId;
+          debugPrint("\n2. Attempting Time-Proximity Match for chat_id: $targetChatId");
+          final fallbackRows = await db.query(
+            'messages',
+            where: 'chat_id = ?',
+            whereArgs: [targetChatId],
+          );
+
+          debugPrint(" -> Total rows found in chat: ${fallbackRows.length}");
+
+          int minDiff = -1;
+          String? closestPlaintext;
+
+          for (var row in fallbackRows) {
+            final rSender = row['sender_id'].toString();
+            if (rSender != 'me' && rSender != msg.senderId) continue;
+
+            final rowContent = row['content'].toString();
+            if (rowContent.contains('ciphertext') || rowContent.contains('🔒')) continue;
+
+            final localTime = row['created_at'] as int;
+            final diff = (localTime - msg.createdAt.millisecondsSinceEpoch).abs();
+
+            debugPrint("    [Compare] DB ID: ${row['id']} | DB Sender: $rSender | Diff: $diff ms | Content: ${rowContent.length > 15 ? rowContent.substring(0, 15) + '...' : rowContent}");
+
+            if (minDiff == -1 || diff < minDiff) {
+              minDiff = diff;
+              closestPlaintext = rowContent;
+            }
+          }
+
+          if (closestPlaintext != null) {
+            debugPrint("\n -> SUCCESS! Closest match found with diff: $minDiff ms.");
+            return msg.copyWith(content: closestPlaintext);
+          } else {
+            debugPrint("\n -> FAILED. No valid plaintexts found in DB for this chat.");
+          }
         } catch (e) {
-          debugPrint("Failed to decrypt history message: $e");
-          return msg.copyWith(content: "🔒 [Encrypted Message]");
+          debugPrint("Local sent-message lookup crashed: $e");
         }
-      } else {
-        return msg.copyWith(content: "🔒 [Sent on another device]");
+        
+        debugPrint(" -> Returning [Sent from another device] Fallback.");
+        return msg.copyWith(content: "🔒 [Sent from another device]");
+      }
+
+      debugPrint("\n -> Message is from peer. Attempting LibSignal decryption...");
+      try {
+        final Map<String, dynamic> payload = jsonDecode(content);
+        final decryptedText = await SignalService().decryptMessage(
+          msg.senderId,
+          payload['ciphertext'],
+          payload['type'],
+        );
+        debugPrint(" -> LibSignal Decryption Successful!");
+        return msg.copyWith(content: decryptedText);
+      } catch (e) {
+        debugPrint(" -> LibSignal Decryption Failed: $e");
+        final errStr = e.toString();
+
+        if (errStr.contains('DuplicateMessageException')) {
+          return msg.copyWith(content: "🔒 [Message already decrypted]");
+        } else if (errStr.contains('NoSessionException') || errStr.contains('Bad Mac')) {
+          return msg.copyWith(content: "🔒 [Encrypted for past session]");
+        }
+
+        return msg.copyWith(content: "🔒 [Encrypted Message]");
       }
     }
-    return msg; 
+    return msg;
   }
 }

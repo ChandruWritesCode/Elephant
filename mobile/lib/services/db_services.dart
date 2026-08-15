@@ -127,15 +127,41 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> insertMessage(Map<String, dynamic> messageData) async {
-    final db = await instance.database;
-    await db.insert(
-      'messages',
-      messageData,
+  Future<int> insertMessage(Map<String, dynamic> row) async {
+    Database db = await instance.database;
+
+    // --- UNIVERSAL CIPHERTEXT GUARD ---
+    // Prevent the Homepage from overwriting our saved plaintexts with server ciphertexts
+    if (row['content'] != null) {
+      String newContent = row['content'].toString();
+      
+      if (newContent.contains('ciphertext') || newContent.contains('🔒')) {
+        // The app is trying to save a ciphertext. Let's check if we already have the plaintext!
+        List<Map<String, dynamic>> existing = await db.query(
+          'messages', 
+          where: 'id = ?', 
+          whereArgs: [row['id']],
+        );
+
+        if (existing.isNotEmpty) {
+          String oldContent = existing.first['content'].toString();
+          if (!oldContent.contains('ciphertext') && !oldContent.contains('🔒')) {
+            // We have the clean plaintext! Swap the ciphertext out so we don't overwrite it.
+            // We still allow the insert to run so it can update 'sync_status' and 'is_read'.
+            row['content'] = oldContent; 
+          }
+        }
+      }
+    }
+    // ----------------------------------
+
+    return await db.insert(
+      'messages', 
+      row, 
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
-
+  
   Future<void> queueAction(
     String id,
     String type,

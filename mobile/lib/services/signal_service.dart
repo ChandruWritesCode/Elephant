@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:libsignal_protocol_dart/libsignal_protocol_dart.dart';
 import 'package:mobile/services/sqlite_signal_store.dart';
@@ -55,84 +56,89 @@ class SignalService {
     final publicPreKeys = preKeys
         .map(
           (k) => {
-            'keyId': k.id,
-            'publicKey': base64Encode(k.getKeyPair().publicKey.serialize()),
+            'id': k.id, 
+            'content': base64Encode(k.getKeyPair().publicKey.serialize()), 
           },
         )
         .toList();
 
     final payload = {
-      'registrationId': registrationId,
-      'identityKey': base64Encode(identityKeyPair.getPublicKey().serialize()),
-      'signedPreKey': {
-        'keyId': signedPreKey.id,
-        'publicKey': base64Encode(
-          signedPreKey.getKeyPair().publicKey.serialize(),
-        ),
-        'signature': base64Encode(signedPreKey.signature),
-      },
-      'preKeys': publicPreKeys,
+      'device_id': 'main', 
+      'identity_key': base64Encode(identityKeyPair.getPublicKey().serialize()),
+      'signed_prekey': base64Encode(signedPreKey.getKeyPair().publicKey.serialize()),
+      'signature': base64Encode(signedPreKey.signature),
+      'one_time_prekeys': publicPreKeys,
     };
 
     try {
-      await _api.post("/keys", data: payload);
+      await _api.post("/e2ee/keys", data: payload); 
       debugPrint("E2EE Keys uploaded successfully");
     } catch (e) {
       debugPrint("Failed to upload E2EE keys: $e");
     }
   }
 
-  Future<void> establishSessionIfNeeded(String remoteUserId) async {
+  Future<bool> establishSessionIfNeeded(String remoteUserId) async {
     await initStore();
     final address = _getAddress(remoteUserId);
 
-    if (await _store.containsSession(address)) return;
+    if (await _store.containsSession(address)) return true; 
 
     try {
-      final response = await _api.get("/bundle/$remoteUserId");
+      final response = await _api.get("/e2ee/bundle/$remoteUserId?device_id=main");
       final data = response.data['data'] ?? response.data;
 
-      final identityKey = IdentityKey(
-        Curve.decodePoint(base64Decode(data['identityKey']), 0),
-      );
-      final signedPreKey = Curve.decodePoint(
-        base64Decode(data['signedPreKey']['publicKey']),
-        0,
-      );
-      final signature = base64Decode(data['signedPreKey']['signature']);
-      final preKey = Curve.decodePoint(
-        base64Decode(data['preKey']['publicKey']),
-        0,
-      );
+      final identityKeyStr = data['identity_key'];
+      final signedPreKeyStr = data['signed_prekey'];
+      final signatureStr = data['signature'];
+      final otpBodyStr = data['one_time_prekey_body'];
+      final otpId = data['one_time_prekey_id'];
+
+      if (identityKeyStr == null || signedPreKeyStr == null || signatureStr == null || otpBodyStr == null) {
+        debugPrint("Receiver bundle is missing required cryptographic keys.");
+        return false;
+      }
+
+      final identityKey = IdentityKey(Curve.decodePoint(base64Decode(identityKeyStr), 0));
+      final signedPreKey = Curve.decodePoint(base64Decode(signedPreKeyStr), 0);
+      final signature = base64Decode(signatureStr);
+      final preKey = Curve.decodePoint(base64Decode(otpBodyStr), 0);
 
       final bundle = PreKeyBundle(
-        data['registrationId'],
-        1,
-        data['preKey']['keyId'],
-        preKey,
-        data['signedPreKey']['keyId'],
-        signedPreKey,
-        signature,
-        identityKey,
+        0,                      
+        1,                      
+        (otpId as int?) ?? 1,   
+        preKey,                 
+        0,                      
+        signedPreKey,           
+        signature,              
+        identityKey,            
       );
 
-      final sessionBuilder = SessionBuilder(
-        _store,
-        _store,
-        _store,
-        _store,
-        address,
-      );
+      final sessionBuilder = SessionBuilder(_store, _store, _store, _store, address);
+      
       await sessionBuilder.processPreKeyBundle(bundle);
+      debugPrint("E2EE Session established perfectly with $remoteUserId!");
+      return true;
+
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        debugPrint("Receiver $remoteUserId has not registered E2EE keys yet.");
+      } else {
+        debugPrint("Network error fetching bundle for $remoteUserId: ${e.message}");
+      }
+      return false;
     } catch (e) {
       debugPrint("Failed to establish E2EE session with $remoteUserId: $e");
+      return false;
     }
   }
-
+  
   Future<Map<String, dynamic>> encryptMessage(
     String remoteUserId,
     String plaintext,
   ) async {
+    debugPrint("SignalService: Encrypting message for $remoteUserId...");
     final address = _getAddress(remoteUserId);
     final sessionCipher = SessionCipher(
       _store,
@@ -145,6 +151,7 @@ class SignalService {
     final plaintextBytes = Uint8List.fromList(utf8.encode(plaintext));
     final ciphertextMessage = await sessionCipher.encrypt(plaintextBytes);
 
+    debugPrint("SignalService: Encryption successful (Type ${ciphertextMessage.getType()}).");
     return {
       'type': ciphertextMessage.getType(),
       'ciphertext': base64Encode(ciphertextMessage.serialize()),
@@ -156,6 +163,7 @@ class SignalService {
     String base64Ciphertext,
     int type,
   ) async {
+    debugPrint("SignalService: Decrypting message from $remoteUserId...");
     final address = _getAddress(remoteUserId);
     final sessionCipher = SessionCipher(
       _store,
@@ -175,6 +183,7 @@ class SignalService {
       plaintextBytes = await sessionCipher.decryptFromSignal(signalMsg);
     }
 
+    debugPrint("SignalService: Decryption successful!");
     return utf8.decode(plaintextBytes);
   }
 

@@ -38,19 +38,44 @@ class InboxController extends ChangeNotifier {
     try {
       final response = await _api.getConversations();
       final rawData = _parseResponse(response.data, ['conversations']);
+      final db = await DatabaseHelper.instance.database;
 
       List<InboxItem> combinedInbox = [];
       for (var json in rawData) {
         try {
           final bool isGroup =
               json['is_group'] == true || json['type'] == 'group';
+
+          InboxItem item;
           if (isGroup) {
-            combinedInbox.add(InboxItem.fromGroup(Group.fromJson(json)));
+            item = InboxItem.fromGroup(Group.fromJson(json));
           } else {
-            combinedInbox.add(
-              InboxItem.fromConversation(Conversation.fromJson(json)),
-            );
+            item = InboxItem.fromConversation(Conversation.fromJson(json));
           }
+
+          // --- INBOX PREVIEW GUARD ---
+          // Prevent the homepage from displaying raw JSON ciphertexts.
+          // Look up the actual plaintext from SQLite, or show a lock icon.
+          if (item.lastMessage.contains('ciphertext') ||
+              item.lastMessage.contains('🔒')) {
+            final localMsg = await db.query(
+              'messages',
+              where:
+                  'chat_id = ? AND content NOT LIKE ? AND content NOT LIKE ?',
+              whereArgs: [item.id, '%ciphertext%', '%🔒%'],
+              orderBy: 'created_at DESC',
+              limit: 1,
+            );
+
+            if (localMsg.isNotEmpty) {
+              item.lastMessage = localMsg.first['content'].toString();
+            } else {
+              item.lastMessage = "🔒 Encrypted Message";
+            }
+          }
+          // ---------------------------
+
+          combinedInbox.add(item);
         } catch (e) {
           debugPrint("BAD JSON OBJECT: $json");
         }
@@ -162,6 +187,12 @@ class InboxController extends ChangeNotifier {
       final db = await DatabaseHelper.instance.database;
       Batch batch = db.batch();
       for (var msg in loadedMessages) {
+        // --- THE DATABASE GUARD ---
+        // Prevent background sync from overwriting plaintexts with ciphertexts
+        if (msg.content.contains('ciphertext') || msg.content.contains('🔒')) {
+          continue;
+        }
+
         batch.insert('messages', {
           'id': msg.id,
           'chat_id': chatId,
