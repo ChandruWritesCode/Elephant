@@ -53,9 +53,6 @@ class InboxController extends ChangeNotifier {
             item = InboxItem.fromConversation(Conversation.fromJson(json));
           }
 
-          // --- INBOX PREVIEW GUARD ---
-          // Prevent the homepage from displaying raw JSON ciphertexts.
-          // Look up the actual plaintext from SQLite, or show a lock icon.
           if (item.lastMessage.contains('ciphertext') ||
               item.lastMessage.contains('🔒')) {
             final localMsg = await db.query(
@@ -73,7 +70,6 @@ class InboxController extends ChangeNotifier {
               item.lastMessage = "🔒 Encrypted Message";
             }
           }
-          // ---------------------------
 
           combinedInbox.add(item);
         } catch (e) {
@@ -187,8 +183,6 @@ class InboxController extends ChangeNotifier {
       final db = await DatabaseHelper.instance.database;
       Batch batch = db.batch();
       for (var msg in loadedMessages) {
-        // --- THE DATABASE GUARD ---
-        // Prevent background sync from overwriting plaintexts with ciphertexts
         if (msg.content.contains('ciphertext') || msg.content.contains('🔒')) {
           continue;
         }

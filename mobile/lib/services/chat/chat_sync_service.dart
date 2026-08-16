@@ -31,7 +31,7 @@ class ChatSyncService {
                 messageId: payload['messageId'],
                 groupId: payload['groupId'],
                 content: payload['content'],
-                senderId: currentUserId.isNotEmpty ? currentUserId : 'me',
+                // senderId: currentUserId.isNotEmpty ? currentUserId : 'me',
                 replyToMessageId: payload['replyToMessageId'],
               );
             } else {
