@@ -75,7 +75,6 @@ class WebSocketService {
     required String groupId,
     required String content,
     String? replyToMessageId,
-    required String senderId,
   }) {
     emit({
       "type": "chat",
@@ -83,7 +82,6 @@ class WebSocketService {
       "group_id": groupId,
       "content": content,
       "reply_to_message_id": replyToMessageId,
-      "sender_id": senderId,
     });
   }
 

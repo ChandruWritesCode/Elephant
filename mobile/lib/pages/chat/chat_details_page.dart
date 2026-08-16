@@ -8,7 +8,9 @@ import 'package:mobile/controllers/chat/group_details_controller.dart';
 import 'package:mobile/controllers/chat/inbox_controller.dart';
 import 'package:mobile/pages/chat/chat_page.dart';
 import 'package:mobile/providers/group_controller_provider.dart';
+import 'package:mobile/services/signal_service.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class ChatMember {
   final String userId;
@@ -181,9 +183,88 @@ class _ChatDetailsPageState extends State<ChatDetailsPage> {
             leading: const Icon(Icons.lock),
             title: const Text('Encryption'),
             subtitle: const Text(
-              'Messages and calls are end-to-end encrypted.',
+              'Messages and calls are end-to-end encrypted. Tap to verify.',
             ),
-            onTap: () {},
+            onTap: () async {
+              final currentUserId = context.read<AuthState>().currentUser?.id;
+              if (currentUserId == null) return;
+
+              final safetyNumber = await SignalService().getSafetyNumber(
+                currentUserId, 
+                widget.chatId
+              );
+
+              if (!context.mounted) return;
+
+              if (safetyNumber == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Send a message first to establish a secure session.')),
+                );
+                return;
+              }
+
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) => Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Verify Security Code",
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        color: Colors.white,
+                        child: QrImageView(
+                          data: safetyNumber,
+                          version: QrVersions.auto,
+                          size: 200.0,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        safetyNumber,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16, 
+                          letterSpacing: 2, 
+                          fontWeight: FontWeight.w500
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "To verify that messages and calls are end-to-end encrypted, scan this code on your contact's phone, or compare the number above.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.refresh, color: Colors.orange),
+            title: const Text('Reset Secure Session', style: TextStyle(color: Colors.orange)),
+            subtitle: const Text('Use this if messages are failing to decrypt.'),
+            onTap: () async {
+               await SignalService().forceResetSession(widget.chatId);
+               if (context.mounted) {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                   const SnackBar(content: Text('Secure session reset. Send a new message to reconnect.')),
+                 );
+               }
+            },
           ),
           const Divider(height: 1),
           ListTile(

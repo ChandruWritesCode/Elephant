@@ -108,12 +108,13 @@ class Message {
     bool? isRead,
     String? id,
     String? syncStatus,
+    String? content,
   }) {
     return Message(
       id: id ?? this.id,
       senderId: senderId,
       receiverId: receiverId,
-      content: content,
+      content: content ?? this.content,
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
       replyToMessageId: replyToMessageId,

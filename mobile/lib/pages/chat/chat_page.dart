@@ -537,7 +537,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                           itemCount:
                               activeChat.length +
                               (chatState.isPeerTyping ? 2 : 1) +
-                              1,
+                              2,
                           itemBuilder: (context, index) {
                             if (index == 0) {
                               return const SizedBox(height: 140);
@@ -595,6 +595,33 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                 index - (chatState.isPeerTyping ? 3 : 2);
                             final int realIndex =
                                 activeChat.length - 1 - msgIndex;
+                            if (realIndex == -1) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 24.0,
+                                  horizontal: 16.0,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest
+                                        .withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    "🔒 Messages and calls are end-to-end encrypted. No one outside of this chat can read or listen to them.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
                             final msg = activeChat[realIndex];
 
                             final bool isHighlighted =
