@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
-    id("org.jetbrains.kotlin.android")
+    // Restored because Flutter 3.13 still strictly requires it.
+    id("org.jetbrains.kotlin.android") 
 }
 
 configurations.all {
@@ -34,10 +35,8 @@ android {
     buildTypes {
         getByName("release") {
             signingConfig = signingConfigs.getByName("debug")
-
             isMinifyEnabled = true
             isShrinkResources = true
-            
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -50,6 +49,7 @@ flutter {
     source = "../.."
 }
 
+// Restored to support Flutter 3.13 Kotlin compilation
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -64,10 +64,13 @@ androidComponents {
             val abi = output.filters.find { 
                 it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI 
             }?.identifier
+            
             val baseAbiCode = abiCodes[abi]
             if (baseAbiCode != null) {
-                // Multiplies main version code by 10 and appends the specific architecture suffix matching formula
-                output.versionCode.set((output.versionCode.get() ?: 1) * 10 + baseAbiCode)
+                // FIXED: We read flutter.versionCode directly instead of mapping output.versionCode to itself.
+                // This breaks the circular loop while still giving you the correct architecture suffix.
+                val baseVersionCode = flutter.versionCode
+                output.versionCode.set(baseVersionCode * 10 + baseAbiCode)
             }
         }
     }
@@ -86,10 +89,11 @@ project.afterEvaluate {
                 
                 for (dir in searchDirs) {
                     if (dir.exists()) {
-                        dir.walkTopDown().forEach { file ->
-                            if (file.isDirectory && file.absolutePath.endsWith("com/google/android/play/core")) {
+                        dir.walkBottomUp().forEach { file -> 
+                            val normalizedPath = file.absolutePath.replace('\\', '/')
+                            if (file.isDirectory && normalizedPath.endsWith("com/google/android/play/core")) {
                                 file.deleteRecursively()
-                                logger.lifecycle("Successfully removed vendor-shaded tracking package: ${file.absolutePath}")
+                                logger.lifecycle("Successfully removed vendor-shaded tracking package: $normalizedPath")
                             }
                         }
                     }
