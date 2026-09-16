@@ -81,6 +81,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();

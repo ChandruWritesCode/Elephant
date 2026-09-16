@@ -34,8 +34,7 @@ class ChatConnectionController extends ChangeNotifier
 
         if (!isOffline) {
           connectWebSocket();
-          eventHandler.inboxController
-              .loadInbox();
+          eventHandler.inboxController.loadInbox();
         } else {
           eventHandler.activeChatController.isPeerOnline = false;
           eventHandler.activeChatController.isPeerTyping = false;
@@ -69,7 +68,10 @@ class ChatConnectionController extends ChangeNotifier
         return;
       }
 
-      _syncService.processOfflineQueue(eventHandler.currentUserId);
+      _syncService.processOfflineQueue(
+        eventHandler.currentUserId,
+        activeChatController: eventHandler.activeChatController,
+      );
 
       final currentChatId = eventHandler.activeChatController.currentChatUserId;
       if (currentChatId != null &&
@@ -104,6 +106,12 @@ class ChatConnectionController extends ChangeNotifier
     } finally {
       _isWsConnecting = false;
     }
+    _ws.onConnectionLost = () {
+      debugPrint(
+        "ConnectionController: Caught immediate socket loss from watchdog.",
+      );
+      _triggerReconnectLoop();
+    };
   }
 
   void _triggerReconnectLoop() {
@@ -131,12 +139,18 @@ class ChatConnectionController extends ChangeNotifier
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      connectWebSocket();
       _syncService.processOfflineQueue(
         eventHandler.currentUserId,
+        activeChatController: eventHandler.activeChatController,
       );
-      eventHandler.inboxController
-          .loadInbox();
+
+      connectWebSocket();
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!isOffline) {
+          eventHandler.inboxController.loadInbox();
+        }
+      });
     } else if (state == AppLifecycleState.paused) {
       _reconnectTimer?.cancel();
       _ws.disconnect();

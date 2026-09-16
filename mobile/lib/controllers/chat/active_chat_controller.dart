@@ -14,6 +14,9 @@ class ActiveChatController extends ChangeNotifier {
   final WebSocketService _ws = WebSocketService();
   final Uuid _uuid = const Uuid();
 
+  bool isLoadingMore = false;
+  bool hasMoreMessages = true;
+  int _currentRequestId = 0;
   List<Message> activeChat = [];
   String? currentChatUserId;
   bool isPeerTyping = false;
@@ -26,12 +29,74 @@ class ActiveChatController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loadMoreMessages() async {
+    if (isLoadingMore || !hasMoreMessages || currentChatUserId == null || activeChat.isEmpty) return;
+    
+    isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      final targetUid = currentChatUserId!;
+      final oldestMessageTime = activeChat.first.createdAt.toIso8601String();
+
+      final res = await _api.getChatHistory(
+        targetUid, 
+        isGroup: isCurrentChatGroup, 
+        before: oldestMessageTime
+      );
+      
+      if (currentChatUserId != targetUid) return;
+
+      final targetList = _extractDataList(res.data, ['messages']);
+      
+      if (targetList.isEmpty) {
+        hasMoreMessages = false;
+        return;
+      }
+
+      List<Message> loadedOldMessages = [];
+      for (var json in targetList.reversed) {
+        Message parsedMsg = Message.fromJson(json);
+        Message decryptedMsg = await _decryptMessageIfNeeded(parsedMsg);
+        loadedOldMessages.add(decryptedMsg);
+      }
+
+      activeChat = [...loadedOldMessages, ...activeChat];
+      
+      final db = await DatabaseHelper.instance.database;
+      Batch batch = db.batch();
+      for (var msg in loadedOldMessages) {
+        if (!msg.content.contains('ciphertext') && !msg.content.contains('🔒')) {
+          batch.insert('messages', {
+            'id': msg.id,
+            'chat_id': targetUid,
+            'sender_id': msg.senderId,
+            'content': msg.content,
+            'created_at': msg.createdAt.millisecondsSinceEpoch,
+            'is_read': msg.isRead ? 1 : 0,
+            'reply_to_id': msg.replyToMessageId,
+            'sync_status': 'synced',
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+      }
+      await batch.commit(noResult: true);
+
+    } catch (e) {
+      debugPrint("Failed to load older messages: $e");
+    } finally {
+      isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> openChat(String targetUid, {bool isGroup = false}) async {
     if (targetUid.isEmpty || targetUid == 'null') return;
+    final int requestId = ++_currentRequestId;
 
     if (currentChatUserId != targetUid) {
       activeChat.clear();
       isChatHistoryLoading = true;
+      hasMoreMessages = true;
       chatOpenCount = 0;
     }
 
@@ -82,7 +147,8 @@ class ActiveChatController extends ChangeNotifier {
     try {
       final res = await _api.getChatHistory(targetUid, isGroup: isGroup);
 
-      if (currentChatUserId != targetUid) return;
+      if (requestId != _currentRequestId || currentChatUserId != targetUid)
+        return;
 
       final targetList = _extractDataList(res.data, ['messages']);
 
@@ -135,8 +201,9 @@ class ActiveChatController extends ChangeNotifier {
         final db = await DatabaseHelper.instance.database;
         Batch batch = db.batch();
         for (var msg in loadedMessages) {
-          if (msg.content.contains('ciphertext') || msg.content.contains('🔒')) {
-            continue; 
+          if (msg.content.contains('ciphertext') ||
+              msg.content.contains('🔒')) {
+            continue;
           }
 
           batch.insert('messages', {
@@ -253,8 +320,9 @@ class ActiveChatController extends ChangeNotifier {
           final db = await DatabaseHelper.instance.database;
           Batch batch = db.batch();
           for (var msg in loadedMessages) {
-            if (msg.content.contains('ciphertext') || msg.content.contains('🔒')) {
-              continue; 
+            if (msg.content.contains('ciphertext') ||
+                msg.content.contains('🔒')) {
+              continue;
             }
 
             batch.insert('messages', {
@@ -307,7 +375,9 @@ class ActiveChatController extends ChangeNotifier {
     final targetId = currentChatUserId!;
 
     if (!isCurrentChatGroup) {
-      final sessionReady = await SignalService().establishSessionIfNeeded(targetId);
+      final sessionReady = await SignalService().establishSessionIfNeeded(
+        targetId,
+      );
       if (!sessionReady) {
         debugPrint("Send aborted: Target user has no E2EE keys on server.");
         return;
@@ -355,10 +425,7 @@ class ActiveChatController extends ChangeNotifier {
 
       String securePayload;
       if (isCurrentChatGroup) {
-        securePayload = jsonEncode({
-          'type': 0,
-          'ciphertext': cleanContent,
-        });
+        securePayload = jsonEncode({'type': 0, 'ciphertext': cleanContent});
       } else {
         final encryptedData = await SignalService().encryptMessage(
           targetId,
@@ -506,13 +573,15 @@ class ActiveChatController extends ChangeNotifier {
   void addRealTimeMessage(Message incomingMsg) async {
     if (currentChatUserId == null) return;
 
-    Message newMsg = await _decryptMessageIfNeeded(incomingMsg);
-
     bool belongsToCurrentChat =
-        (isCurrentChatGroup && newMsg.receiverId == currentChatUserId) ||
+        (isCurrentChatGroup && incomingMsg.receiverId == currentChatUserId) ||
         (!isCurrentChatGroup &&
-            (newMsg.senderId == currentChatUserId ||
-                newMsg.receiverId == currentChatUserId));
+            (incomingMsg.senderId == currentChatUserId ||
+                incomingMsg.receiverId == currentChatUserId));
+
+    if (!belongsToCurrentChat) return;
+
+    Message newMsg = await _decryptMessageIfNeeded(incomingMsg);
 
     if (belongsToCurrentChat) {
       final existingIndex = activeChat.indexWhere((m) => m.id == newMsg.id);
@@ -552,27 +621,30 @@ class ActiveChatController extends ChangeNotifier {
     final content = msg.content.trim();
 
     if (content.startsWith('{') && content.contains('ciphertext')) {
-      
-      bool isSelfChat = msg.senderId == msg.receiverId;
-      bool isSentByMe = isSelfChat || (!isCurrentChatGroup && msg.senderId != currentChatUserId) || msg.senderId == 'me';
+      try {
+        final db = await DatabaseHelper.instance.database;
 
-      if (isSentByMe) {
-        try {
-          final db = await DatabaseHelper.instance.database;
-          
-          final exactMatch = await db.query(
-            'messages',
-            where: 'id = ?',
-            whereArgs: [msg.id],
-          );
+        final exactMatch = await db.query(
+          'messages',
+          where: 'id = ?',
+          whereArgs: [msg.id],
+        );
 
-          if (exactMatch.isNotEmpty) {
-            final exactContent = exactMatch.first['content'].toString();
-            if (!exactContent.contains('ciphertext') && !exactContent.contains('🔒')) {
-              return msg.copyWith(content: exactContent);
-            } 
-          } 
+        if (exactMatch.isNotEmpty) {
+          final exactContent = exactMatch.first['content'].toString();
+          if (!exactContent.contains('ciphertext') &&
+              !exactContent.contains('🔒')) {
+            return msg.copyWith(content: exactContent);
+          }
+        }
 
+        bool isSelfChat = msg.senderId == msg.receiverId;
+        bool isSentByMe =
+            isSelfChat ||
+            (!isCurrentChatGroup && msg.senderId != currentChatUserId) ||
+            msg.senderId == 'me';
+
+        if (isSentByMe) {
           final targetChatId = currentChatUserId ?? msg.receiverId;
           final fallbackRows = await db.query(
             'messages',
@@ -588,12 +660,16 @@ class ActiveChatController extends ChangeNotifier {
             if (rSender != 'me' && rSender != msg.senderId) continue;
 
             final rowContent = row['content'].toString();
-            if (rowContent.contains('ciphertext') || rowContent.contains('🔒')) continue;
+            if (rowContent.contains('ciphertext') ||
+                rowContent.contains('🔒')) {
+              continue;
+            }
 
             final localTime = row['created_at'] as int;
-            final diff = (localTime - msg.createdAt.millisecondsSinceEpoch).abs();
+            final diff = (localTime - msg.createdAt.millisecondsSinceEpoch)
+                .abs();
 
-            if (minDiff == -1 || diff < minDiff) {
+            if (diff < 5000 && (minDiff == -1 || diff < minDiff)) {
               minDiff = diff;
               closestPlaintext = rowContent;
             }
@@ -601,12 +677,12 @@ class ActiveChatController extends ChangeNotifier {
 
           if (closestPlaintext != null) {
             return msg.copyWith(content: closestPlaintext);
-          } 
-        } catch (e) {
-          debugPrint("Local sent-message lookup crashed: $e");
+          }
+
+          return msg.copyWith(content: "🔒 [Sent from another device]");
         }
-        
-        return msg.copyWith(content: "🔒 [Sent from another device]");
+      } catch (e) {
+        debugPrint("Local sent-message lookup crashed: $e");
       }
 
       try {
@@ -628,7 +704,8 @@ class ActiveChatController extends ChangeNotifier {
 
         if (errStr.contains('DuplicateMessageException')) {
           return msg.copyWith(content: "🔒 [Message already decrypted]");
-        } else if (errStr.contains('NoSessionException') || errStr.contains('Bad Mac')) {
+        } else if (errStr.contains('NoSessionException') ||
+            errStr.contains('Bad Mac')) {
           return msg.copyWith(content: "🔒 [Encrypted for past session]");
         }
 

@@ -1,8 +1,7 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-    // Restored because Flutter 3.13 still strictly requires it.
-    id("org.jetbrains.kotlin.android") 
 }
 
 configurations.all {
@@ -49,7 +48,6 @@ flutter {
     source = "../.."
 }
 
-// Restored to support Flutter 3.13 Kotlin compilation
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -67,8 +65,6 @@ androidComponents {
             
             val baseAbiCode = abiCodes[abi]
             if (baseAbiCode != null) {
-                // FIXED: We read flutter.versionCode directly instead of mapping output.versionCode to itself.
-                // This breaks the circular loop while still giving you the correct architecture suffix.
                 val baseVersionCode = flutter.versionCode
                 output.versionCode.set(baseVersionCode * 10 + baseAbiCode)
             }

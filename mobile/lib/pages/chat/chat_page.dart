@@ -63,8 +63,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _itemPositionsListener.itemPositions.addListener(_scrollListener);
-
     _chatController = context.read<ActiveChatController>();
+    _chatController.addListener(_onChatStateChanged);
     _authState = context.read<AuthState>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -83,9 +83,24 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     });
   }
 
+  void _onChatStateChanged() {
+    final currentCount = _chatController.activeChat.length;
+    if (currentCount > _previousMessageCount) {
+      _previousMessageCount = currentCount;
+      if (!_showScrollToBottom && _itemScrollController.isAttached) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _itemScrollController.jumpTo(index: 0);
+        });
+      }
+    } else {
+      _previousMessageCount = currentCount;
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _chatController.removeListener(_onChatStateChanged);
 
     _itemPositionsListener.itemPositions.removeListener(_scrollListener);
 
@@ -113,17 +128,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     }
   }
 
-  void _handleTypingChange(String text) {
-    if (text.isNotEmpty && !_isCurrentlyTyping) {
-      _isCurrentlyTyping = true;
-      context.read<ActiveChatController>().sendTypingNotification(true);
-    } else if (text.isEmpty && _isCurrentlyTyping) {
-      _isCurrentlyTyping = false;
-      context.read<ActiveChatController>().sendTypingNotification(false);
+  void _handleTypingChange(bool isTyping) {
+    if (isTyping != _isCurrentlyTyping) {
+      _isCurrentlyTyping = isTyping;
+      context.read<ActiveChatController>().sendTypingNotification(isTyping);
     }
 
     _typingDebounce?.cancel();
-    if (text.isNotEmpty) {
+
+    if (isTyping) {
       _typingDebounce = Timer(const Duration(seconds: 2), () {
         if (mounted && _isCurrentlyTyping) {
           _isCurrentlyTyping = false;
@@ -469,22 +482,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
         ),
         body: Stack(
           children: [
-            Builder(
-              builder: (context) {
+            Consumer<ActiveChatController>(
+              builder: (context, chatController, child) {
                 final activeChat = chatState.activeChat;
-
-                if (activeChat.length > _previousMessageCount) {
-                  _previousMessageCount = activeChat.length;
-
-                  if (!_showScrollToBottom &&
-                      _itemScrollController.isAttached) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) _itemScrollController.jumpTo(index: 0);
-                    });
-                  }
-                } else {
-                  _previousMessageCount = activeChat.length;
-                }
 
                 return AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
@@ -963,34 +963,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     ),
                     ChatInputArea(
                       onSendMessage: _sendMessage,
-                      onTypingChanged: (isTyping) {
-                        if (isTyping && !_isCurrentlyTyping) {
-                          _isCurrentlyTyping = true;
-                          context
-                              .read<ActiveChatController>()
-                              .sendTypingNotification(true);
-                        }
-
-                        _typingDebounce?.cancel();
-                        if (isTyping) {
-                          _typingDebounce = Timer(
-                            const Duration(seconds: 2),
-                            () {
-                              if (mounted && _isCurrentlyTyping) {
-                                _isCurrentlyTyping = false;
-                                context
-                                    .read<ActiveChatController>()
-                                    .sendTypingNotification(false);
-                              }
-                            },
-                          );
-                        } else if (!isTyping && _isCurrentlyTyping) {
-                          _isCurrentlyTyping = false;
-                          context
-                              .read<ActiveChatController>()
-                              .sendTypingNotification(false);
-                        }
-                      },
+                      onTypingChanged: _handleTypingChange,
                     ),
                   ],
                 ),

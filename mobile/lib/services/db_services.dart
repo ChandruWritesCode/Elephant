@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
@@ -7,24 +9,47 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  
+  static const String _dbName = 'secure_chat.db';
 
   DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('secure_chat.db');
+    _database = await _initDB(_dbName);
     return _database!;
   }
 
   Future<String> _getEncryptionKey() async {
     const keyName = 'db_encryption_key';
-    String? key = await _secureStorage.read(key: keyName);
+    String? key;
+
+    try {
+      key = await _secureStorage.read(key: keyName);
+    } on PlatformException catch (e) {
+      if (e.message?.contains('BAD_DECRYPT') == true || e.code == 'Exception encountered') {
+        print('CRITICAL: Keystore corrupted. Wiping secure storage and resetting DB.');
+        
+        await _secureStorage.deleteAll();
+        
+        final dbPath = join(await getDatabasesPath(), _dbName); 
+        await deleteDatabase(dbPath);
+        
+        key = null;
+      } else {
+        rethrow;
+      }
+    }
 
     if (key == null) {
-      final secureKey = base64Url.encode(List<int>.generate(32, (i) => i + 1));
+      final random = Random.secure();
+      final secureBytes = List<int>.generate(32, (_) => random.nextInt(256));
+      final secureKey = base64Url.encode(secureBytes);
+      
       await _secureStorage.write(key: keyName, value: secureKey);
       key = secureKey;
     }
+    
     return key;
   }
 
@@ -52,6 +77,13 @@ class DatabaseHelper {
         is_read INTEGER NOT NULL,
         reply_to_id TEXT,
         sync_status TEXT NOT NULL -- 'synced' or 'pending'
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE signal_sender_keys (
+        sender_key_name TEXT PRIMARY KEY,
+        record TEXT NOT NULL
       )
     ''');
 

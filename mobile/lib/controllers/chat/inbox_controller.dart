@@ -39,6 +39,28 @@ class InboxController extends ChangeNotifier {
       final response = await _api.getConversations();
       final rawData = _parseResponse(response.data, ['conversations']);
       final db = await DatabaseHelper.instance.database;
+      final allChatIds = rawData.map((j) {
+        return j['is_group'] == true || j['type'] == 'group' 
+            ? j['id'] 
+            : (j['chat_user_id'] ?? j['user_id'] ?? j['id'] ?? j['partner_id']);
+      }).where((id) => id != null).toList();
+
+      Map<String, String> localDecryptedMsgs = {};
+      if (allChatIds.isNotEmpty) {
+        final placeholders = List.filled(allChatIds.length, '?').join(',');
+        final localMsgs = await db.rawQuery('''
+          SELECT chat_id, content 
+          FROM messages 
+          WHERE chat_id IN ($placeholders) 
+            AND content NOT LIKE '%ciphertext%' 
+            AND content NOT LIKE '%🔒%'
+          GROUP BY chat_id HAVING MAX(created_at)
+        ''', allChatIds);
+        
+        for (var row in localMsgs) {
+          localDecryptedMsgs[row['chat_id'].toString()] = row['content'].toString();
+        }
+      }
 
       List<InboxItem> combinedInbox = [];
       for (var json in rawData) {
@@ -55,17 +77,8 @@ class InboxController extends ChangeNotifier {
 
           if (item.lastMessage.contains('ciphertext') ||
               item.lastMessage.contains('🔒')) {
-            final localMsg = await db.query(
-              'messages',
-              where:
-                  'chat_id = ? AND content NOT LIKE ? AND content NOT LIKE ?',
-              whereArgs: [item.id, '%ciphertext%', '%🔒%'],
-              orderBy: 'created_at DESC',
-              limit: 1,
-            );
-
-            if (localMsg.isNotEmpty) {
-              item.lastMessage = localMsg.first['content'].toString();
+            if (localDecryptedMsgs.containsKey(item.id)) {
+              item.lastMessage = localDecryptedMsgs[item.id]!;
             } else {
               item.lastMessage = "🔒 Encrypted Message";
             }
