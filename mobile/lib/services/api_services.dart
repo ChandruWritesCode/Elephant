@@ -24,7 +24,11 @@ class ApiService {
           return handler.next(response);
         },
         onError: (DioException e, handler) async {
-          if (e.response?.statusCode == 401) {
+          final isRefreshEndpoint = e.requestOptions.path.contains(
+            "/auth/refresh",
+          );
+
+          if (e.response?.statusCode == 401 && !isRefreshEndpoint) {
             try {
               _refreshFuture ??= _refreshToken();
               await _refreshFuture;
@@ -42,6 +46,11 @@ class ApiService {
               _refreshFuture = null;
             }
           }
+
+          if (e.response?.statusCode == 401 && isRefreshEndpoint) {
+            AuthState.onGlobalUnauthorized?.call();
+          }
+
           return handler.next(e);
         },
       ),

@@ -4,7 +4,7 @@ import 'package:libsignal_protocol_dart/libsignal_protocol_dart.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 import 'db_services.dart';
 
-class SQLiteSignalStore implements SignalProtocolStore {
+class SQLiteSignalStore implements SignalProtocolStore, SenderKeyStore {
   String _toB64(Uint8List bytes) => base64Encode(bytes);
 
   Uint8List _fromB64(String b64) => base64Decode(b64);
@@ -255,4 +255,33 @@ class SQLiteSignalStore implements SignalProtocolStore {
     final db = await DatabaseHelper.instance.database;
     await db.delete('signal_sessions', where: 'address = ?', whereArgs: [name]);
   }
+
+  @override
+  Future<void> storeSenderKey(SenderKeyName senderKeyName, SenderKeyRecord record) async {
+    final db = await DatabaseHelper.instance.database;
+    final keyNameStr = "${senderKeyName.groupId}::${senderKeyName.sender.getName()}";
+    
+    await db.insert('signal_sender_keys', {
+      'sender_key_name': keyNameStr,
+      'record': _toB64(record.serialize()),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  @override
+  Future<SenderKeyRecord> loadSenderKey(SenderKeyName senderKeyName) async {
+    final db = await DatabaseHelper.instance.database;
+    final keyNameStr = "${senderKeyName.groupId}::${senderKeyName.sender.getName()}";
+    
+    final res = await db.query(
+      'signal_sender_keys',
+      where: 'sender_key_name = ?',
+      whereArgs: [keyNameStr],
+    );
+    
+    if (res.isEmpty) {
+      return SenderKeyRecord();
+    }
+    return SenderKeyRecord.fromSerialized(_fromB64(res.first['record'] as String));
+  }
+
 }

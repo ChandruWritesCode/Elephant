@@ -26,25 +26,18 @@ class ChatEventHandler {
     if (type == null) return;
 
     final String? cleanCurrentChat = activeChatController.currentChatUserId
-        ?.trim()
-        .toLowerCase();
+        ?.trim();
     bool isCurrentChat = false;
 
     if (cleanCurrentChat != null) {
       if (activeChatController.isCurrentChatGroup) {
-        final String? eventGroupId = data['group_id']
-            ?.toString()
-            .trim()
-            .toLowerCase();
+        final String? eventGroupId = data['group_id']?.toString().trim();
         isCurrentChat = (eventGroupId == cleanCurrentChat);
       } else {
         final String? eventSenderId =
-            data['sender_id']?.toString().trim().toLowerCase() ??
-            data['sender']?.toString().trim().toLowerCase();
-        final String? eventReceiverId = data['receiver_id']
-            ?.toString()
-            .trim()
-            .toLowerCase();
+            data['sender_id']?.toString().trim() ??
+            data['sender']?.toString().trim();
+        final String? eventReceiverId = data['receiver_id']?.toString().trim();
 
         isCurrentChat =
             (eventSenderId == cleanCurrentChat ||
@@ -53,13 +46,18 @@ class ChatEventHandler {
     }
 
     switch (type) {
+      case 'pong':
+        _ws.registerPong();
+        break;
       case 'user_status':
       case 'status':
         final String? eventUserId = (data['user_id'] ?? data['id'])
             ?.toString()
             .trim()
             .toLowerCase();
-        if (eventUserId == cleanCurrentChat &&
+        final String? safeCurrentChat = cleanCurrentChat?.toLowerCase();
+
+        if (eventUserId == safeCurrentChat &&
             !activeChatController.isCurrentChatGroup) {
           activeChatController.isPeerOnline =
               data['online'] == true || data['content'] == 'online';
@@ -79,13 +77,11 @@ class ChatEventHandler {
 
         final String cleanSenderId = (data['sender_id'] ?? data['sender'] ?? '')
             .toString()
-            .trim()
-            .toLowerCase();
+            .trim();
         final String cleanReceiverId = (data['receiver_id'] ?? '')
             .toString()
-            .trim()
-            .toLowerCase();
-        final String myId = currentUserId.trim().toLowerCase();
+            .trim();
+        final String myId = currentUserId.trim();
         final bool isMe = (cleanSenderId == 'me' || cleanSenderId == myId);
 
         final String dbChatId = data['group_id'] != null
@@ -103,8 +99,7 @@ class ChatEventHandler {
               payload['ciphertext'],
               payload['type'],
             );
-            data['content'] =
-                decryptedText;
+            data['content'] = decryptedText;
           }
         } catch (e) {
           debugPrint(
@@ -265,17 +260,11 @@ class ChatEventHandler {
         break;
 
       case 'read_receipt':
-        final String payloadSender = (data['sender_id'] ?? '')
-            .toString()
-            .toLowerCase();
-        final String payloadReceiver = (data['receiver_id'] ?? '')
-            .toString()
-            .toLowerCase();
-        final String payloadGroup = (data['group_id'] ?? '')
-            .toString()
-            .toLowerCase();
-        final String safeChatId = (activeChatController.currentChatUserId ?? '')
-            .toLowerCase();
+        final String payloadSender = (data['sender_id'] ?? '').toString();
+        final String payloadReceiver = (data['receiver_id'] ?? '').toString();
+        final String payloadGroup = (data['group_id'] ?? '').toString();
+        final String safeChatId =
+            (activeChatController.currentChatUserId ?? '');
 
         bool isRelevantToThisChat = false;
         String dbTargetChatId = "";
@@ -311,7 +300,7 @@ class ChatEventHandler {
 
           activeChatController.activeChat = activeChatController.activeChat.map(
             (msg) {
-              final String msgSenderId = msg.senderId.trim().toLowerCase();
+              final String msgSenderId = msg.senderId.trim();
               if (!msg.isRead &&
                   (msgSenderId == 'me' || msgSenderId != safeChatId)) {
                 updated = true;

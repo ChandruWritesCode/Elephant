@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:mobile/services/db_services.dart';
 import 'package:mobile/services/signal_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app_links/app_links.dart';
@@ -94,6 +96,8 @@ class AuthState extends ChangeNotifier {
     _token = await _authService.getToken();
 
     if (_token != null) {
+      await SignalService().ensureIdentityInitialized();
+      await SignalService().uploadPublicKeys();
       await loadUserProfile();
       if (_currentUser != null) {
         await SignalService().initializeAndUploadKeys(_currentUser!.id);
@@ -133,7 +137,21 @@ class AuthState extends ChangeNotifier {
           await loadUserProfile();
 
           if (_currentUser != null) {
-            await SignalService().initializeAndUploadKeys(_currentUser!.id);
+            final FlutterSecureStorage storage = const FlutterSecureStorage();
+            final String? lastUserId = await storage.read(key: "last_user_id");
+
+            if (lastUserId != null && lastUserId != _currentUser!.id) {
+              final db = await DatabaseHelper.instance.database;
+              await db.delete('signal_local_keys');
+              await db.delete('signal_identities');
+              await db.delete('signal_sessions');
+              await db.delete('signal_prekeys');
+              await db.delete('signal_signed_prekeys');
+            }
+            await storage.write(key: "last_user_id", value: _currentUser!.id);
+
+            await SignalService().ensureIdentityInitialized();
+            await SignalService().uploadPublicKeys();
           }
 
           _isLoading = false;
@@ -187,7 +205,8 @@ class AuthState extends ChangeNotifier {
           await loadUserProfile();
 
           if (_currentUser != null) {
-            await SignalService().initializeAndUploadKeys(_currentUser!.id);
+            await SignalService().ensureIdentityInitialized();
+            await SignalService().uploadPublicKeys();
           }
 
           _isLoading = false;
@@ -273,6 +292,8 @@ class AuthState extends ChangeNotifier {
     _token = null;
     _currentUser = null;
     await _authService.logout();
+    final storage = const FlutterSecureStorage();
+    await storage.delete(key: "last_user_id");
     notifyListeners();
   }
 
@@ -281,6 +302,7 @@ class AuthState extends ChangeNotifier {
       _token = null;
       _currentUser = null;
       _authService.logout();
+      const FlutterSecureStorage().delete(key: "last_user_id");
       notifyListeners();
     }
   }
